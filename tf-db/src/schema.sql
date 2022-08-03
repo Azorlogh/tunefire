@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS songs (
+	id TEXT PRIMARY KEY,
+	title TEXT NOT NULL,
+	source TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS song_tags (
+	song_id TEXT NOT NULL,
+	tag_id TEXT NOT NULL,
+	"value" FLOAT NOT NULL,
+	PRIMARY KEY (song_id, tag_id)
+);

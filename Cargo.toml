@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+	"tf-db",
+	"tf-player",
+	"tf-desktop",
+]
