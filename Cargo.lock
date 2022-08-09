@@ -2568,6 +2568,7 @@ dependencies = [
  "souvlaki",
  "tf-db",
  "tf-player",
+ "tracing",
  "tracing-subscriber",
  "url",
  "uuid",

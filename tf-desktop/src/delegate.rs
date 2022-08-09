@@ -1,26 +1,27 @@
-use std::{rc::Rc, sync::mpsc::Receiver, time::Duration};
+use std::{rc::Rc, time::Duration};
 
 use anyhow::Result;
 #[cfg(target_os = "windows")]
 use druid::HasRawWindowHandle;
 use druid::{im, AppDelegate};
-use souvlaki::{MediaControlEvent, MediaControls};
+use souvlaki::MediaControlEvent;
 use tf_db::Song;
-use tf_player::{player::Player, PlayerController};
+use tf_player::player::{self, Player};
+use tracing::warn;
 use url::Url;
 use uuid::Uuid;
 
 use crate::{
 	command,
+	media_controls::MediaControls,
 	state::{SongEdit, SongListItem},
 	NewSong, State,
 };
 
 pub struct Delegate {
 	db: tf_db::Client,
-	player: PlayerController,
+	player: player::Controller,
 	media_controls: Option<MediaControls>,
-	media_events: Option<Receiver<MediaControlEvent>>,
 }
 
 impl Delegate {
@@ -29,37 +30,16 @@ impl Delegate {
 			db,
 			player: Player::new()?,
 			media_controls: None,
-			media_events: None,
 		})
 	}
 
-	pub fn setup_media_controls(&mut self, #[allow(unused)] window_handle: druid::WindowHandle) {
-		#[cfg(not(target_os = "windows"))]
-		let hwnd = None;
-		#[cfg(target_os = "windows")]
-		let hwnd = match window_handle.raw_window_handle() {
-			druid::RawWindowHandle::Win32(h) => Some(h.hwnd),
-			_ => panic!("no window handle"),
-		};
-
-		let config = souvlaki::PlatformConfig {
-			dbus_name: "tunefire",
-			display_name: "Tunefire",
-			hwnd,
-		};
-
-		let mut controls = MediaControls::new(config).unwrap();
-
-		let (to_handler, from_media_events) = std::sync::mpsc::sync_channel(32);
-
-		controls
-			.attach(move |e| {
-				to_handler.send(e).ok();
-			})
+	pub fn queue_song(&mut self, data: &mut State, song: Song) {
+		self.player
+			.queue_song(Url::parse(&song.source).unwrap())
 			.unwrap();
-
-		self.media_controls = Some(controls);
-		self.media_events = Some(from_media_events);
+		data.current_song = Some(Rc::new(song));
+		self.update_media_controls(data);
+		self.play();
 	}
 
 	pub fn play_pause(&mut self, data: &State) {
@@ -74,55 +54,31 @@ impl Delegate {
 
 	pub fn play(&mut self) {
 		self.player.play().unwrap();
-		self.media_controls
-			.as_mut()
-			.unwrap()
-			.set_playback(souvlaki::MediaPlayback::Playing {
-				progress: Some(souvlaki::MediaPosition(Duration::from_secs(1))),
-			})
-			.unwrap();
+		self.media_controls.as_mut().map(|c| c.set_is_playing(true));
 	}
 
 	pub fn pause(&mut self) {
 		self.player.pause().unwrap();
 		self.media_controls
 			.as_mut()
-			.unwrap()
-			.set_playback(souvlaki::MediaPlayback::Stopped)
-			.unwrap();
+			.map(|c| c.set_is_playing(false));
 	}
 
 	pub fn update_media_controls(&mut self, data: &State) {
-		use souvlaki::{MediaMetadata, MediaPlayback, MediaPosition};
 		match &data.current_song {
 			Some(song) => {
 				self.media_controls
 					.as_mut()
-					.unwrap()
-					.set_metadata(MediaMetadata {
-						title: Some(song.title.as_str()),
-						..Default::default()
-					})
-					.ok();
-				self.media_controls
-					.as_mut()
-					.unwrap()
-					.set_playback(MediaPlayback::Playing {
-						progress: Some(MediaPosition(Duration::from_secs(1))),
-					})
-					.ok();
+					.map(|c| c.set_metadata(&song.title));
+
+				self.media_controls.as_mut().map(|c| {
+					c.set_is_playing(true).ok();
+				});
 			}
 			None => {
 				self.media_controls
 					.as_mut()
-					.unwrap()
-					.set_metadata(MediaMetadata::default())
-					.ok();
-				self.media_controls
-					.as_mut()
-					.unwrap()
-					.set_playback(MediaPlayback::Stopped)
-					.ok();
+					.map(|c| c.set_is_playing(false));
 			}
 		}
 	}
@@ -176,11 +132,7 @@ impl AppDelegate<State> for Delegate {
 					.map(|s| Rc::new(s))
 					.collect();
 				if let Some(song) = queue.pop_front() {
-					self.player
-						.queue_song(Url::parse(&song.source).unwrap())
-						.unwrap();
-					data.current_song = Some(song);
-					self.update_media_controls(data);
+					self.queue_song(data, (*song).clone());
 				}
 				data.queue = queue;
 				druid::Handled::No
@@ -188,7 +140,7 @@ impl AppDelegate<State> for Delegate {
 
 			// player
 			_ if cmd.is(command::PLAYER_TICK) => {
-				match &self.media_events.as_mut().unwrap().try_recv() {
+				match &self.media_controls.as_mut().unwrap().events.try_recv() {
 					Ok(MediaControlEvent::Play) => self.play(),
 					Ok(MediaControlEvent::Pause) => self.pause(),
 					Ok(MediaControlEvent::Toggle) => self.play_pause(data),
@@ -222,11 +174,7 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::SONG_PLAY) => {
 				let id = cmd.get::<Uuid>(command::SONG_PLAY).unwrap();
 				let song = self.db.get_song(*id).unwrap();
-				let url = Url::parse(&song.source).unwrap();
-				self.player.queue_song(url).unwrap();
-				data.current_song = Some(Rc::new(song.clone()));
-				self.update_media_controls(data);
-				self.play();
+				self.queue_song(data, song);
 				druid::Handled::No
 			}
 			_ if cmd.is(command::PLAYER_PLAY_PAUSE) => {
@@ -327,7 +275,10 @@ impl AppDelegate<State> for Delegate {
 		_ctx: &mut druid::DelegateCtx,
 	) {
 		if self.media_controls.is_none() {
-			self.setup_media_controls(handle);
+			match MediaControls::new(handle) {
+				Ok(controls) => self.media_controls = Some(controls),
+				Err(err) => warn!("failed to create media controls {}", err),
+			}
 		}
 	}
 

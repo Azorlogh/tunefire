@@ -15,13 +15,16 @@ use cpal::{
 use parking_lot::RwLock;
 use tracing::debug;
 
-use crate::{PlayerController, SongSource, SourceError};
+use crate::{SongSource, SourceError};
 
 pub mod state;
 pub use state::State;
 
 mod resampler;
 use resampler::Resampler;
+
+mod controller;
+pub use controller::Controller;
 
 pub enum Event {
 	QueueSong(SongSource),
@@ -43,7 +46,7 @@ pub struct Player {
 }
 
 impl Player {
-	pub fn new() -> anyhow::Result<PlayerController> {
+	pub fn new() -> anyhow::Result<Controller> {
 		let host = cpal::default_host();
 
 		let device = host
@@ -82,7 +85,7 @@ impl Player {
 
 		stream.play().unwrap();
 
-		PlayerController::new(player_state, to_player, stream, nb_queued)
+		Controller::new(player_state, to_player, stream, nb_queued)
 	}
 
 	pub fn process_events(&mut self) {

@@ -13,6 +13,8 @@ pub mod theme;
 
 mod delegate;
 
+mod media_controls;
+
 fn main() -> Result<()> {
 	use tracing_subscriber::prelude::*;
 	let fmt_layer = tracing_subscriber::fmt::layer()
