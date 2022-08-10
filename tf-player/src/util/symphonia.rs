@@ -28,23 +28,22 @@ impl Source {
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, anyhow::Error> {
 		let file = Box::new(File::open(path).unwrap());
 		let mss = MediaSourceStream::new(file, Default::default());
-		Self::from_mss(mss)
+		Self::from_mss(mss, Hint::new())
 	}
 
-	pub fn from_mss(mss: MediaSourceStream) -> Result<Self, anyhow::Error> {
-		let mut hint = Hint::new();
-		hint.with_extension("mp3");
+	pub fn from_mss(mss: MediaSourceStream, hint: Hint) -> Result<Self, anyhow::Error> {
+		let probed = symphonia::default::get_probe()
+			.format(&hint, mss, &Default::default(), &Default::default())
+			.unwrap();
 
-		// let probed = symphonia::default::get_probe()
-		// 	.format(&hint, mss, &Default::default(), &Default::default())
-		// 	.unwrap();
+		let mut format = probed.format;
 
-		// let mut format = probed.format;
+		// let mut format = Box::new(symphonia::default::formats::Mp3Reader::try_new(
+		// 	mss,
+		// 	&Default::default(),
+		// )?);
 
-		let mut format = Box::new(symphonia::default::formats::Mp3Reader::try_new(
-			mss,
-			&Default::default(),
-		)?);
+		println!("{:?}", format.tracks());
 
 		let track = format.default_track().unwrap().clone();
 

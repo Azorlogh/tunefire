@@ -11,7 +11,7 @@ use parking_lot::RwLock;
 use url::Url;
 
 use super::Event;
-use crate::{LocalPlugin, SongSource, SoundcloudPlugin, SourcePlugin};
+use crate::{LocalPlugin, SongSource, SoundcloudPlugin, SourcePlugin, YoutubePlugin};
 
 pub struct Controller {
 	sender: crossbeam_channel::Sender<Event>,
@@ -37,7 +37,11 @@ impl Controller {
 		Ok(Self {
 			state,
 			sender,
-			plugins: vec![Box::new(LocalPlugin), Box::new(SoundcloudPlugin::new()?)],
+			plugins: vec![
+				Box::new(LocalPlugin),
+				Box::new(SoundcloudPlugin::new()?),
+				Box::new(YoutubePlugin::new()?),
+			],
 			_stream: stream,
 			nb_queued,
 		})

@@ -45,14 +45,9 @@ impl SoundcloudPlugin {
 				"https://api-v2.soundcloud.com/resolve?client_id={}&url={}",
 				self.client_id, url
 			))
-			.call()
-			.unwrap()
-			.into_string()
-			.unwrap(),
-		)
-		.unwrap();
-
-		println!("{:?}", &resolve.media.transcodings);
+			.call()?
+			.into_string()?,
+		)?;
 
 		let media_url = format!(
 			"{}?client_id={}&track_authorization={}",
@@ -63,8 +58,6 @@ impl SoundcloudPlugin {
 			serde_json::from_str(&ureq::get(&media_url).call().unwrap().into_string().unwrap())
 				.unwrap();
 
-		println!("media response: {:?}", media_response.url);
-
 		let hls_str = ureq::get(&media_response.url)
 			.call()
 			.unwrap()
@@ -74,17 +67,6 @@ impl SoundcloudPlugin {
 		let hls = hls_m3u8::MediaPlaylist::try_from(hls_str.as_str()).unwrap();
 
 		let source = source::SoundcloudSource::new(&hls)?;
-		// let mss = MediaSourceStream::new(Box::new(source), Default::default());
-
-		// // std::thread::sleep(Duration::SECOND * 2);
-
-		// let source = crate::util::symphonia::Source::from_mss(mss).map(|source| SongSource {
-		// 	info: SongInfo {
-		// 		duration: source.duration,
-		// 	},
-		// 	sample_rate: source.sample_rate,
-		// 	signal: Box::new(source),
-		// });
 
 		Ok(SongSource {
 			info: SongInfo {
@@ -102,14 +84,7 @@ impl SourcePlugin for SoundcloudPlugin {
 	}
 
 	fn handle_url(&self, url: &Url) -> Option<Result<SongSource>> {
-		if url.scheme() == "https" {
-			if url.host_str() != Some("soundcloud.com") {
-				return None;
-			}
-
-			Some(self.handle(url))
-		} else {
-			None
-		}
+		(url.scheme() == "https" && url.host_str() == Some("soundcloud.com"))
+			.then(|| self.handle(url))
 	}
 }
