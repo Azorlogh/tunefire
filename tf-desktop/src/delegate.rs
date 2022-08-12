@@ -69,7 +69,7 @@ impl Delegate {
 			Some(song) => {
 				self.media_controls
 					.as_mut()
-					.map(|c| c.set_metadata(&song.title));
+					.map(|c| c.set_metadata(&song.artist, &song.title));
 
 				self.media_controls.as_mut().map(|c| {
 					c.set_is_playing(true).ok();

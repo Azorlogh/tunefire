@@ -41,9 +41,10 @@ impl MediaControls {
 		})
 	}
 
-	pub fn set_metadata(&mut self, title: &str) -> Result<()> {
+	pub fn set_metadata(&mut self, artist: &str, title: &str) -> Result<()> {
 		self.controls
 			.set_metadata(MediaMetadata {
+				artist: Some(artist),
 				title: Some(title),
 				..Default::default()
 			})
