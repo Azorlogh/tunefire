@@ -109,8 +109,8 @@ impl Source for YoutubeSource {
 	}
 
 	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
-		if let Some(pos) = self.seeking {
-			if self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
+		if let Some(_) = self.seeking {
+			if !self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
 				self.seeking = None;
 				let media_source =
 					HttpProgressive::new(self.url.as_str(), self.buffering.clone()).unwrap();
