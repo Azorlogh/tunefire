@@ -1,17 +1,24 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::{
+	io::{Read, Seek, SeekFrom},
+	sync::{atomic::AtomicBool, Arc, Mutex},
+	time::Duration,
+};
 
 use anyhow::Result;
 use symphonia::core::io::MediaSource;
+
+use super::fetcher::Fetcher;
 
 pub struct HttpProgressive {
 	url: String,
 	length: usize,
 	position: usize,
-	reader: Box<dyn Read + Send + Sync>,
+	consumer: Mutex<rtrb::Consumer<u8>>,
+	buffering: Arc<AtomicBool>,
 }
 
 impl HttpProgressive {
-	pub fn new(url: &str) -> Result<Self> {
+	pub fn new(url: &str, buffering: Arc<AtomicBool>) -> Result<Self> {
 		let response = ureq::get(url).call()?;
 
 		let length = response
@@ -19,19 +26,35 @@ impl HttpProgressive {
 			.and_then(|r| r.parse::<usize>().ok())
 			.unwrap_or(0);
 
+		let consumer = Mutex::new(Fetcher::spawn(
+			response.into_reader(),
+			50000,
+			buffering.clone(),
+		)?);
+
+		while consumer.lock().unwrap().slots() != 50000 {
+			std::thread::sleep(Duration::from_millis(100));
+		}
+
 		Ok(Self {
 			url: url.to_owned(),
 			length,
 			position: 0,
-			reader: response.into_reader(),
+			consumer,
+			buffering,
 		})
 	}
 }
 
 impl Read for HttpProgressive {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		let len = self.reader.read(buf)?;
+		let len = self.consumer.lock().unwrap().read(buf)?;
 		self.position += len;
+		if len != buf.len() {
+			self.buffering
+				.store(true, std::sync::atomic::Ordering::Relaxed);
+		}
+		println!("{}", self.position);
 		Ok(len)
 	}
 }
@@ -48,11 +71,20 @@ impl Seek for HttpProgressive {
 
 		self.position = idx as usize;
 
-		self.reader = ureq::get(&self.url)
+		let response = ureq::get(&self.url)
 			.set("Range", &format!("bytes={}-", idx))
 			.call()
-			.unwrap()
-			.into_reader();
+			.unwrap();
+
+		let consumer = Mutex::new(
+			Fetcher::spawn(response.into_reader(), 50000, self.buffering.clone()).unwrap(),
+		);
+
+		while consumer.lock().unwrap().slots() != 50000 {
+			std::thread::sleep(Duration::from_millis(100));
+		}
+
+		self.consumer = consumer;
 
 		Ok(idx)
 	}
@@ -60,7 +92,7 @@ impl Seek for HttpProgressive {
 
 impl MediaSource for HttpProgressive {
 	fn is_seekable(&self) -> bool {
-		true
+		false // TODO: fix this
 	}
 
 	fn byte_len(&self) -> Option<u64> {
