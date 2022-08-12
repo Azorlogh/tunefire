@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
+use data::Tag;
 use rusqlite::params;
 use uuid::Uuid;
 
-mod song;
-pub use song::Song;
+mod data;
+pub use data::Song;
 
 mod filter;
 pub use filter::Filter;
@@ -277,5 +278,26 @@ impl Client {
 		}
 
 		Ok(songs)
+	}
+
+	// List the set of tags
+	pub fn list_tags(&mut self) -> Result<Vec<Tag>> {
+		let mut stmt = self.conn.prepare(&format!(
+			r#"
+				SELECT id, name
+				FROM tags
+				ORDER BY name
+			"#,
+		))?;
+		let tags = stmt
+			.query_map(params![], |row| {
+				Ok(Tag {
+					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
+					name: row.get(1)?,
+				})
+			})?
+			.collect::<Result<Vec<Tag>, _>>()
+			.map_err(|e| anyhow!("failed list tags: {}", e))?;
+		Ok(tags)
 	}
 }

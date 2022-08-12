@@ -8,3 +8,9 @@ pub struct Song {
 	pub title: String,
 	pub tags: Vec<(String, f32)>,
 }
+
+#[derive(Debug, Clone)]
+pub struct Tag {
+	pub id: Uuid,
+	pub name: String,
+}

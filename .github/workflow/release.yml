@@ -1,0 +1,48 @@
+name: Build release binaries
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+      - uses: actions/checkout@master
+      - if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install libx11-dev libgtk-3-dev
+          sudo apt install libasound2-dev
+      - if: matrix.os == 'macos-latest'
+        run: |
+          brew install cairo
+      - name: Build
+        run: cargo build --release
+      - uses: Shopify/upload-to-release@master
+        if: matrix.os == 'windows-latest'
+        with:
+          name: tunefire-${{ github.event.release.tag_name }}_win64.exe
+          path: target/release/tunefire.exe
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Shopify/upload-to-release@master
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: tunefire-${{ github.event.release.tag_name }}_linux
+          path: target/release/tunefire
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: Shopify/upload-to-release@master
+        if: matrix.os == 'macos-latest'
+        with:
+          name: tunefire-${{ github.event.release.tag_name }}_macos
+          path: target/release/tunefire
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
