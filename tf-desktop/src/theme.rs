@@ -8,6 +8,7 @@ pub const BACKGROUND: Key<Color> = Key::new("theme.background");
 pub const BACKGROUND_HIGHLIGHT0: Key<Color> = Key::new("theme.background-highlight-0");
 pub const BACKGROUND_HIGHLIGHT1: Key<Color> = Key::new("theme.background-highlight-1");
 pub const FOREGROUND: Key<Color> = Key::new("theme.foreground");
+pub const FOREGROUND_DIM: Key<Color> = Key::new("theme.foreground-dim");
 
 const fn color(code: usize) -> Color {
 	Color::rgb8((code >> 16) as u8, (code >> 8) as u8, code as u8)
@@ -24,6 +25,7 @@ mod colors {
 	pub const BACKGROUND_HIGHLIGHT0: Color = color(0x2c313a);
 	pub const BACKGROUND_HIGHLIGHT1: Color = color(0x3a404c);
 	pub const FOREGROUND: Color = color(0xffffff);
+	pub const FOREGROUND_DIM: Color = color(0xaaaaaa);
 }
 
 pub fn apply(env: &mut Env, _data: &State) {
@@ -33,6 +35,7 @@ pub fn apply(env: &mut Env, _data: &State) {
 	env.set(BACKGROUND_HIGHLIGHT0, colors::BACKGROUND_HIGHLIGHT0);
 	env.set(BACKGROUND_HIGHLIGHT1, colors::BACKGROUND_HIGHLIGHT1);
 	env.set(FOREGROUND, colors::FOREGROUND);
+	env.set(FOREGROUND_DIM, colors::FOREGROUND_DIM);
 
 	{
 		use druid::theme::*;

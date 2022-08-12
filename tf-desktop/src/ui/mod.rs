@@ -4,19 +4,19 @@ use druid::{
 	im,
 	kurbo::{BezPath, Circle},
 	lens::Map,
-	theme,
 	widget::{
 		Button, Container, ControllerHost, CrossAxisAlignment, EnvScope, Flex, Label, List, Maybe,
 		Painter, Scroll, SizedBox, TextBox,
 	},
-	Affine, Color, Env, EventCtx, Insets, Key, PaintCtx, RenderContext, TextAlignment, Widget,
-	WidgetExt,
+	Affine, Color, Env, EventCtx, Key, PaintCtx, RenderContext, TextAlignment, Widget, WidgetExt,
 };
 use tf_player::player;
 
+use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	state::{NewSong, SongEdit, SongListItem},
+	state::{SongEdit, SongListItem},
+	theme,
 	widget::{
 		common::stack::Stack, controllers::Enter, overlay::Overlay, player_tick::PlayerTick,
 		tag_edit::TagEdit,
@@ -24,10 +24,9 @@ use crate::{
 	State,
 };
 
-use self::media_bar::MediaBarState;
-
 const SONG_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("song_list.item.background");
 
+mod add_song;
 mod media_bar;
 
 pub fn ui() -> impl Widget<State> {
@@ -43,13 +42,12 @@ pub fn ui() -> impl Widget<State> {
 		.with_child(Maybe::new(|| song_edit(), || SizedBox::empty()).lens(State::song_edit));
 
 	let mut root = Flex::column();
-	root.add_child(Label::new("T𝕌NEF𝕀RE"));
 	root.add_default_spacer();
 	root.add_child(query_box);
 	root.add_default_spacer();
 	root.add_flex_child(main_view, 1.0);
 	root.add_default_spacer();
-	root.add_child(add_song_ui());
+	root.add_child(url_bar());
 	root.add_default_spacer();
 	root.add_child(
 		Maybe::new(|| media_bar::ui(), || SizedBox::empty()).lens(Map::new(
@@ -71,6 +69,9 @@ pub fn ui() -> impl Widget<State> {
 	ControllerHost::new(
 		Stack::new()
 			.with_child(root.padding(10.0).expand_width())
+			.with_child(
+				Maybe::new(|| add_song::add_song(), || SizedBox::empty()).lens(State::new_song),
+			)
 			.with_child(Overlay::new()),
 		PlayerTick::default(),
 	)
@@ -80,10 +81,22 @@ fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
 	List::new(|| {
 		let row = Flex::row()
 			.with_child(play_song_button())
+			.with_default_spacer()
 			.with_flex_child(
-				Label::new(|item: &SongListItem, _: &_| item.song.title.to_owned())
-					.padding(Insets::uniform(10.0))
-					.expand_width(),
+				Flex::column()
+					.with_child(
+						Label::new(|item: &SongListItem, _: &_| item.song.title.to_owned())
+							.with_text_size(16.0)
+							.fix_height(24.0)
+							.expand_width(),
+					)
+					.with_child(EnvScope::new(
+						|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
+						Label::new(|item: &SongListItem, _: &_| item.song.artist.to_owned())
+							.with_text_size(13.0)
+							.fix_height(10.0)
+							.expand_width(),
+					)),
 				1.0,
 			)
 			.with_child(
@@ -101,7 +114,7 @@ fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
 					}),
 			)
 			.expand_width()
-			.fix_height(48.0);
+			.fix_height(64.0);
 
 		EnvScope::new(
 			|env, state| {
@@ -135,6 +148,13 @@ fn query_box() -> impl Widget<State> {
 			.lens(State::query),
 			1.0,
 		)
+		.with_default_spacer()
+		.with_child(
+			Label::new("TUNEFIRE")
+				.with_font(druid::theme::UI_FONT_BOLD)
+				.with_text_color(theme::FOREGROUND_DIM),
+		)
+		.with_default_spacer()
 }
 
 fn song_edit() -> impl Widget<SongEdit> {
@@ -161,37 +181,21 @@ fn song_edit() -> impl Widget<SongEdit> {
 			.with_child(Button::new("CLOSE").on_click(|ctx, _: &mut SongEdit, _| {
 				ctx.submit_command(command::UI_SONG_EDIT_CLOSE)
 			}))
-			.env_scope(|env, _| env.set(theme::BORDER_DARK, Color::TRANSPARENT))
+			.env_scope(|env, _| env.set(druid::theme::BORDER_DARK, Color::TRANSPARENT))
 			.fix_width(400.0)
 			.padding(8.0);
 	Container::new(col).background(crate::theme::BACKGROUND_HIGHLIGHT0)
 }
 
-fn add_song_ui() -> impl Widget<State> {
-	Flex::row()
-		.with_flex_child(
-			Flex::column()
-				.with_child(
-					TextBox::new()
-						.with_placeholder("Title")
-						.lens(NewSong::title)
-						.lens(State::new_song)
-						.expand_width(),
-				)
-				.with_child(
-					TextBox::new()
-						.with_placeholder("Source")
-						.lens(NewSong::source)
-						.lens(State::new_song)
-						.expand_width(),
-				)
-				.expand_width(),
-			1.0,
-		)
-		.with_child(Button::new("+").on_click(|ctx, state: &mut State, _| {
-			ctx.submit_command(command::SONG_ADD.with(state.new_song.clone()))
-		}))
-		.cross_axis_alignment(CrossAxisAlignment::Fill)
+fn url_bar() -> impl Widget<State> {
+	ControllerHost::new(
+		TextBox::new().with_placeholder("Source"),
+		Enter::new(|ctx, data: &mut String, _| {
+			ctx.submit_command(command::UI_SONG_ADD_OPEN.with(data.to_owned()))
+		}),
+	)
+	.expand_width()
+	.lens(State::new_song_url)
 }
 
 fn play_query_button() -> impl Widget<State> {
@@ -228,6 +232,6 @@ pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 	}
 	ctx.fill(
 		Affine::scale(rad) * BezPath::from_svg(icon_svg).unwrap(),
-		&env.get(theme::FOREGROUND_LIGHT),
+		&env.get(druid::theme::FOREGROUND_LIGHT),
 	);
 }

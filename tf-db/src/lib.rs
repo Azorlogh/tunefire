@@ -45,12 +45,12 @@ impl Client {
 		})
 	}
 
-	pub fn add_song(&mut self, source: &str, title: &str) -> Result<Uuid> {
+	pub fn add_song(&mut self, source: &str, artist: &str, title: &str) -> Result<Uuid> {
 		let id = Uuid::new_v4();
 		self.conn
 			.execute(
-				"INSERT INTO songs (id, source, title) VALUES (?, ?, ?)",
-				&[&id.to_string(), source, title],
+				"INSERT INTO songs (id, source, artist, title) VALUES (?, ?, ?, ?)",
+				&[&id.to_string(), source, artist, title],
 			)
 			.map_err(|e| anyhow!("failed to add song {}", e))?;
 
@@ -67,13 +67,14 @@ impl Client {
 	pub fn get_song(&self, id: Uuid) -> Result<Song> {
 		let mut stmt = self
 			.conn
-			.prepare("SELECT id, source, title FROM songs WHERE id = ?")?;
+			.prepare("SELECT id, source, artist, title FROM songs WHERE id = ?")?;
 		let mut song = stmt
 			.query_row(&[&id.to_string()], |row| {
 				Ok(Song {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
-					title: row.get(2)?,
+					artist: row.get(2)?,
+					title: row.get(3)?,
 					tags: vec![],
 				})
 			})
@@ -148,13 +149,16 @@ impl Client {
 	}
 
 	pub fn list(&mut self) -> Result<Vec<Song>> {
-		let mut stmt = self.conn.prepare("SELECT id, source, title FROM songs")?;
+		let mut stmt = self
+			.conn
+			.prepare("SELECT id, source, artist, title FROM songs")?;
 		let songs = stmt
 			.query_map([], |row| {
 				Ok(Song {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
-					title: row.get(2)?,
+					artist: row.get(2)?,
+					title: row.get(3)?,
 					tags: vec![],
 				})
 			})?
@@ -250,7 +254,7 @@ impl Client {
 		println!("obtained view id {:?}", view_id);
 		let mut stmt = self.conn.prepare(&format!(
 			r#"
-				SELECT id, source, title
+				SELECT id, source, artist, title
 				FROM "{view_id}"
 				NATURAL JOIN songs
 			"#,
@@ -260,7 +264,8 @@ impl Client {
 				Ok(Song {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
-					title: row.get(2)?,
+					artist: row.get(2)?,
+					title: row.get(3)?,
 					tags: vec![],
 				})
 			})?

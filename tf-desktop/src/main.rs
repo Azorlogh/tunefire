@@ -4,7 +4,7 @@ use druid::{AppLauncher, WindowDesc};
 mod command;
 mod state;
 mod ui;
-pub use state::{NewSong, State};
+pub use state::State;
 use tracing_subscriber::EnvFilter;
 
 pub mod widget;

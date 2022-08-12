@@ -1,7 +1,6 @@
 use std::{
-	collections::VecDeque,
 	io::Read,
-	sync::{atomic::AtomicBool, Arc, Mutex},
+	sync::{atomic::AtomicBool, Arc},
 	time::Duration,
 };
 
@@ -45,21 +44,9 @@ impl<R: Read + Send + 'static> Fetcher<R> {
 			}
 			let mut chunk = self.prod.write_chunk(slots)?;
 			let (first, _second) = chunk.as_mut_slices();
-			let mut n_read = self.reader.read(first)?;
-			if n_read == first.len() && n_read != 0 {
-				// n_read += self.reader.read(second)?;
-			}
-
+			let n_read = self.reader.read(first)?;
+			// filling second buffer causes a strange error
 			chunk.commit(n_read);
-
-			// std::thread::sleep(Duration::from_millis(100));
-
-			// println!("remaining to fill the buffer: {}", self.prod.remaining());
-			// let remaining = self.prod.remaining();
-			// if remaining > 0 {
-			// 	let did_read = self.prod.read_from(&mut self.reader, None)?;
-			// 	dbg!(did_read);
-			// }
 		}
 		println!("fetcher was abandonned, stopping");
 		Ok(())

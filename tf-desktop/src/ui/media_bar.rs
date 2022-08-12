@@ -65,7 +65,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 		));
 
 	let song_info = Maybe::new(
-		|| Label::new(|data: &Rc<Song>, _: &_| data.title.clone()),
+		|| Label::new(|data: &Rc<Song>, _: &_| format!("{} - {}", data.artist, data.title)),
 		|| SizedBox::empty(),
 	)
 	.expand_width();

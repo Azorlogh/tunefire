@@ -7,15 +7,15 @@ use druid::{im, AppDelegate};
 use souvlaki::MediaControlEvent;
 use tf_db::Song;
 use tf_player::player::{self, Player};
-use tracing::warn;
+use tracing::{error, warn};
 use url::Url;
 use uuid::Uuid;
 
 use crate::{
 	command,
 	media_controls::MediaControls,
-	state::{SongEdit, SongListItem},
-	NewSong, State,
+	state::{NewSong, SongEdit, SongListItem},
+	State,
 };
 
 pub struct Delegate {
@@ -202,17 +202,38 @@ impl AppDelegate<State> for Delegate {
 				data.song_edit = None;
 				druid::Handled::Yes
 			}
+			_ if cmd.is(command::UI_SONG_ADD_OPEN) => {
+				let source = cmd.get::<String>(command::UI_SONG_ADD_OPEN).unwrap();
+				data.new_song = Some(NewSong {
+					source: source.clone(),
+					title: String::new(),
+					artist: String::new(),
+				});
+				druid::Handled::Yes
+			}
+			_ if cmd.is(command::UI_SONG_ADD_CLOSE) => {
+				data.new_song = None;
+				druid::Handled::Yes
+			}
 
 			// db
 			_ if cmd.is(command::SONG_ADD) => {
-				let NewSong { source, title } = cmd.get::<NewSong>(command::SONG_ADD).unwrap();
-				if let Ok(id) = self.db.add_song(source, title) {
-					let song = self.db.get_song(id).unwrap();
-					data.songs.push_back(SongListItem {
-						song: Rc::new(song),
-						selected: true,
-					});
-					data.new_song = NewSong::default();
+				let NewSong {
+					source,
+					artist,
+					title,
+				} = cmd.get::<NewSong>(command::SONG_ADD).unwrap();
+				match self.db.add_song(source, artist, title) {
+					Ok(id) => {
+						let song = self.db.get_song(id).unwrap();
+						data.songs.push_back(SongListItem {
+							song: Rc::new(song),
+							selected: true,
+						});
+						data.new_song_url = String::new();
+						data.new_song = None;
+					}
+					Err(e) => error!("{:?}", e),
 				}
 				druid::Handled::Yes
 			}

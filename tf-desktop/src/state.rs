@@ -13,7 +13,8 @@ pub struct State {
 	pub player_state: Rc<player::State>,
 	pub queue: im::Vector<Rc<Song>>,
 	pub query: String,
-	pub new_song: NewSong,
+	pub new_song: Option<NewSong>,
+	pub new_song_url: String,
 	pub song_edit: Option<SongEdit>,
 	pub current_song: Option<Rc<Song>>,
 }
@@ -34,7 +35,8 @@ impl State {
 			songs,
 			queue: im::Vector::new(),
 			query: String::new(),
-			new_song: NewSong::default(),
+			new_song: None,
+			new_song_url: String::new(),
 			song_edit: None,
 			current_song: None,
 		})
@@ -59,8 +61,9 @@ impl State {
 
 #[derive(Clone, Default, Data, Lens)]
 pub struct NewSong {
-	pub title: String,
 	pub source: String,
+	pub title: String,
+	pub artist: String,
 }
 
 #[derive(Clone, Data, Lens)]

@@ -1,6 +1,5 @@
-use druid::kurbo::{Point, Rect, Size};
-
 use druid::{
+	kurbo::{Point, Rect, Size},
 	BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
 	UpdateCtx, Widget, WidgetPod,
 };
@@ -27,7 +26,7 @@ impl<T: Data> Stack<T> {
 impl<T: Data> Widget<T> for Stack<T> {
 	fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
 		self.children.reverse();
-		for child in &mut self.children {
+		for child in self.children.iter_mut() {
 			child.event(ctx, event, data, env);
 			if ctx.is_handled() {
 				break;

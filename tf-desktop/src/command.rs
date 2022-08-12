@@ -19,6 +19,8 @@ pub const PLAYER_NEXT: Selector = Selector::new("player.next");
 pub const SONG_PLAY: Selector<Uuid> = Selector::new("song-play");
 pub const UI_SONG_EDIT_OPEN: Selector<Uuid> = Selector::new("ui.song-edit.open");
 pub const UI_SONG_EDIT_CLOSE: Selector = Selector::new("ui.song-edit.close");
+pub const UI_SONG_ADD_OPEN: Selector<String> = Selector::new("ui.song-add.open");
+pub const UI_SONG_ADD_CLOSE: Selector = Selector::new("ui.song-add.close");
 
 // Database editing
 pub const SONG_ADD: Selector<NewSong> = Selector::new("song.add");

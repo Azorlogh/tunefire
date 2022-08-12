@@ -48,7 +48,7 @@ impl YoutubePlugin {
 
 		let duration = video.duration();
 
-		let source = YoutubeSource::new(&stream.url(), duration)?;
+		let source = YoutubeSource::new(&stream.url())?;
 
 		Ok(SongSource {
 			info: SongInfo { duration },
@@ -77,7 +77,7 @@ pub struct YoutubeSource {
 }
 
 impl YoutubeSource {
-	pub fn new(url: &Url, duration: Duration) -> Result<Self> {
+	pub fn new(url: &Url) -> Result<Self> {
 		let buffering = Arc::new(AtomicBool::new(true));
 
 		let media_source = HttpProgressive::new(url.as_str(), buffering.clone())?;
@@ -109,7 +109,7 @@ impl Source for YoutubeSource {
 	}
 
 	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
-		if let Some(pos) = self.seeking {
+		if let Some(_) = self.seeking {
 			if self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
 				self.seeking = None;
 				let media_source =

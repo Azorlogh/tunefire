@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS songs (
 	id TEXT PRIMARY KEY,
+	artist TEXT NOT NULL,
 	title TEXT NOT NULL,
 	source TEXT NOT NULL
 );
