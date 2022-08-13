@@ -25,11 +25,11 @@ impl YoutubePlugin {
 	}
 
 	pub fn handle(&self, url: &Url) -> Result<SongSource> {
-		let re = regex::Regex::new(r#"\?v=(.*)"#).unwrap();
-		let video_id: ytextract::video::Id = re
-			.captures_iter(&url.as_str())
-			.last()
-			.ok_or(anyhow!("could not find url to the magic script"))?[1]
+		let video_id: ytextract::video::Id = url
+			.query_pairs()
+			.find(|pair| pair.0 == "v")
+			.ok_or(anyhow!("video id missing from the url"))?
+			.1
 			.parse()?;
 
 		let rt = Runtime::new().unwrap();
