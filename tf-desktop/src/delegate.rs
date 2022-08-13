@@ -1,8 +1,6 @@
 use std::{rc::Rc, time::Duration};
 
 use anyhow::Result;
-#[cfg(target_os = "windows")]
-use druid::HasRawWindowHandle;
 use druid::{im, AppDelegate};
 use souvlaki::MediaControlEvent;
 use tf_db::Song;
