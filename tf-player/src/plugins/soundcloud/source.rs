@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use anyhow::Result;
 use hls_m3u8::MediaPlaylist;
 use parking_lot::Mutex;
-use symphonia::core::{io::MediaSourceStream, probe::Hint};
+use symphonia::core::{formats::FormatReader, io::MediaSourceStream, probe::Hint};
 
 use crate::{
 	util::{
@@ -36,7 +36,8 @@ impl SoundcloudSource {
 		);
 
 		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
-		let symphonia_source = util::symphonia::Source::from_mss(mss, Hint::new())?;
+		let format = symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default())?;
+		let symphonia_source = util::symphonia::Source::from_format_reader(Box::new(format))?;
 
 		Ok(Self {
 			segment_infos,

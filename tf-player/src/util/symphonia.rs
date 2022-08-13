@@ -26,27 +26,26 @@ pub struct Source {
 
 impl Source {
 	pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, anyhow::Error> {
+		let path = path.as_ref();
 		let file = Box::new(File::open(path).unwrap());
 		let mss = MediaSourceStream::new(file, Default::default());
-		Self::from_mss(mss, Hint::new())
+		let mut hint = Hint::new();
+		if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
+			hint.with_extension(extension);
+		}
+		Self::from_mss(mss, hint)
 	}
 
 	pub fn from_mss(mss: MediaSourceStream, hint: Hint) -> Result<Self, anyhow::Error> {
 		let probed = symphonia::default::get_probe()
 			.format(&hint, mss, &Default::default(), &Default::default())
 			.unwrap();
+		let format = probed.format;
+		Self::from_format_reader(format)
+	}
 
-		let mut format = probed.format;
-
-		// let mut format = Box::new(symphonia::default::formats::Mp3Reader::try_new(
-		// 	mss,
-		// 	&Default::default(),
-		// )?);
-
-		println!("{:?}", format.tracks());
-
+	pub fn from_format_reader(mut format: Box<dyn FormatReader>) -> Result<Self, anyhow::Error> {
 		let track = format.default_track().unwrap().clone();
-
 		let mut decoder =
 			symphonia::default::get_codecs().make(&track.codec_params, &Default::default())?;
 		let codec_params = decoder.codec_params();
@@ -57,7 +56,6 @@ impl Source {
 				.calc_time(codec_params.n_frames.unwrap());
 			Duration::from_secs(time.seconds) + Duration::from_secs_f64(time.frac)
 		};
-
 		let audio_buf = get_next_audio_buffer(&mut *format, track.id, &mut *decoder)?;
 		let spec = *audio_buf.spec();
 		let sample_buf = {
@@ -66,7 +64,6 @@ impl Source {
 			sample_buf.copy_interleaved_ref(audio_buf);
 			sample_buf
 		};
-
 		Ok(Self {
 			format,
 			decoder,
