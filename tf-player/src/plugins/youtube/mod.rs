@@ -82,10 +82,14 @@ impl YoutubeSource {
 
 		let media_source = HttpProgressive::new(url.as_str(), buffering.clone())?;
 
+		println!("created the media source!");
+
 		let mss = MediaSourceStream::new(Box::new(media_source), Default::default());
 		let mut hint = Hint::new();
 		hint.mime_type("audio/aac");
 		let source = util::symphonia::Source::from_mss(mss, hint)?;
+
+		println!("symphonia source made!");
 
 		Ok(Self {
 			url: url.to_owned(),
@@ -110,7 +114,7 @@ impl Source for YoutubeSource {
 
 	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
 		if let Some(_) = self.seeking {
-			if self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
+			if !self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
 				self.seeking = None;
 				let media_source =
 					HttpProgressive::new(self.url.as_str(), self.buffering.clone()).unwrap();
