@@ -8,7 +8,8 @@ use druid::{
 		Button, Container, ControllerHost, CrossAxisAlignment, EnvScope, Flex, Label, List, Maybe,
 		Painter, Scroll, SizedBox, TextBox,
 	},
-	Affine, Color, Env, EventCtx, Key, PaintCtx, RenderContext, TextAlignment, Widget, WidgetExt,
+	Affine, Color, Env, EventCtx, Key, PaintCtx, RenderContext, TextAlignment, Vec2, Widget,
+	WidgetExt,
 };
 use tf_player::player;
 
@@ -214,12 +215,12 @@ fn play_song_button() -> impl Widget<SongListItem> {
 		})
 }
 
-pub const ICON_PLAY: &str = "M0.750,0.567 L0.750,1.433 L1.500,1.000 L0.750,0.567";
-pub const ICON_PAUSE: &str = "M0.598,0.521 L0.598,1.479 L0.866,1.479 L0.866,0.521 L0.598,0.521 M1.402,0.521 L1.134,0.521 L1.134,1.479 L1.402,1.479 L1.402,0.521";
-pub const ICON_PREV: &str = "M1.250,0.567 L0.700,0.885 L0.700,0.567 L0.500,0.567 L0.500,1.000 L0.500,1.433 L0.700,1.433 L0.700,1.115 L1.250,1.433 L1.250,0.567";
-pub const ICON_NEXT: &str = "M0.750,1.433 L1.300,1.115 L1.300,1.433 L1.500,1.433 L1.500,1.000 L1.500,0.567 L1.300,0.567 L1.300,0.885 L0.750,0.567 L0.750,1.433";
-pub const ICON_EDIT: &str = "M1.000 0.513 L0.700,0.513 L0.700,1.000 L0.700,1.487 L1.000,1.487 L1.300,1.487 L1.300,1.017 L1.024,1.017 L1.024,0.699 L1.210,0.513 L1.000,0.513 M1.654 0.564 L1.477,0.387 L1.124,0.741 L1.124,0.917 L1.300,0.917 L1.654,0.564";
-pub const ICON_DELETE: &str = "M0.814 1.394 L1.000,1.394 L1.186,1.394 A0.044,0.044 0 0,0 1.229,1.357 L1.348,0.695 A0.044,0.044 0 0,0 1.393,0.651 A0.044,0.044 0 0,0 1.348,0.606 L0.652,0.606 A0.044,0.044 0 0,0 0.607,0.651 A0.044,0.044 0 0,0 0.652,0.695 L0.771,1.357 A0.044,0.044 0 0,0 0.814,1.394";
+pub const ICON_PLAY: &str = include_str!("../../assets/play.svg");
+pub const ICON_PAUSE: &str = include_str!("../../assets/pause.svg");
+pub const ICON_PREV: &str = include_str!("../../assets/previous.svg");
+pub const ICON_NEXT: &str = include_str!("../../assets/next.svg");
+pub const ICON_EDIT: &str = include_str!("../../assets/edit.svg");
+pub const ICON_DELETE: &str = include_str!("../../assets/delete.svg");
 
 pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 	let size = ctx.size();
@@ -230,8 +231,18 @@ pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 			&env.get(crate::theme::BACKGROUND_HIGHLIGHT1),
 		);
 	}
+	// let rad = size.min_side() / 48.0 * 0.75;
+	let color = env.get(if ctx.is_hot() {
+		crate::theme::FOREGROUND
+	} else {
+		crate::theme::FOREGROUND_DIM
+	});
 	ctx.fill(
-		Affine::scale(rad) * BezPath::from_svg(icon_svg).unwrap(),
-		&env.get(druid::theme::FOREGROUND_LIGHT),
+		Affine::translate(Vec2::new(size.min_side() / 2.0, size.min_side() / 2.0))
+			* Affine::scale(size.min_side() / 2.0 * 0.75)
+			* Affine::scale(2.0 / 48.0)
+			* Affine::translate(Vec2::new(-24.0, -24.0))
+			* BezPath::from_svg(icon_svg).unwrap(),
+		&color,
 	);
 }
