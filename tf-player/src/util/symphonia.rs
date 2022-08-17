@@ -21,7 +21,6 @@ pub struct Source {
 	pub sample_rate: f64,
 	sample_buf: symphonia::core::audio::SampleBuffer<f32>,
 	i: u32,
-	buffering: bool,
 }
 
 impl Source {
@@ -71,7 +70,6 @@ impl Source {
 			duration,
 			sample_rate: spec.rate as f64,
 			sample_buf,
-			buffering: false,
 			i: 0,
 		})
 	}
@@ -82,20 +80,13 @@ impl Source {
 			Ok(audio_buf) => {
 				self.sample_buf.copy_interleaved_ref(audio_buf);
 				self.i = 0;
-				self.buffering = false;
 				Ok(())
 			}
 			Err(SymphoniaError::IoError(e)) => match e.kind() {
-				std::io::ErrorKind::WouldBlock => {
-					self.sample_buf.clear();
-					self.buffering = true;
-					println!("error while decoding next packed {}", e);
-					Err(SourceError::Buffering)
-				}
 				std::io::ErrorKind::UnexpectedEof => Err(SourceError::EndOfStream),
-				_ => Err(SourceError::Buffering),
+				_ => Err(SourceError::General(Box::new(e))),
 			},
-			_ => Err(SourceError::Buffering),
+			Err(e) => Err(SourceError::General(Box::new(e))),
 		}
 	}
 }
@@ -117,19 +108,18 @@ fn get_next_audio_buffer<'a>(
 
 impl crate::Source for Source {
 	fn seek(&mut self, pos: Duration) -> Result<(), SourceError> {
-		if let Err(_) = self.format.seek(
-			SeekMode::Coarse,
-			SeekTo::Time {
-				time: Time {
-					seconds: pos.as_secs(),
-					frac: pos.as_secs_f64().fract(),
+		self.format
+			.seek(
+				SeekMode::Coarse,
+				SeekTo::Time {
+					time: Time {
+						seconds: pos.as_secs(),
+						frac: pos.as_secs_f64().fract(),
+					},
+					track_id: None,
 				},
-				track_id: None,
-			},
-		) {
-			self.buffering = true;
-			return Err(SourceError::Buffering);
-		}
+			)
+			.map_err(|e| SourceError::General(Box::new(e)))?;
 		self.decode_next()?;
 		self.i = 0;
 		Ok(())

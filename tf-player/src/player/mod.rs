@@ -5,18 +5,16 @@ use std::{
 		atomic::{self, AtomicUsize},
 		Arc,
 	},
-	time::{Duration, Instant},
+	time::Duration,
 };
 
-use cpal::{
-	traits::{DeviceTrait, HostTrait, StreamTrait},
-	StreamConfig,
-};
+use cpal::{traits::StreamTrait, StreamConfig};
 use parking_lot::RwLock;
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::{SongSource, SourceError};
 
+pub mod sink;
 pub mod state;
 pub use state::State;
 
@@ -42,50 +40,43 @@ pub struct Player {
 	nb_queued: Arc<AtomicUsize>, // invariant: nb_queued == source_queue.len()
 	source: Option<SongSource>,
 	resampler: Option<Resampler>,
-	buffering_since: Instant,
+	audio_sink: rtrb::Producer<f32>,
+	stream: cpal::Stream,
 }
 
 impl Player {
 	pub fn new() -> anyhow::Result<Controller> {
-		let host = cpal::default_host();
-
-		let device = host
-			.default_output_device()
-			.expect("no output device available");
-
-		let config = device.default_output_config().expect("error while configs");
-
-		debug!("playing... {:?}", config);
-
 		let (to_player, from_controller) = crossbeam_channel::unbounded();
 
+		let player_state = Arc::new(RwLock::new(State::Idle));
+
 		let nb_queued = Arc::new(AtomicUsize::new(0));
-		let mut player = Player {
-			receiver: from_controller,
-			config: config.config(),
-			state: Arc::new(RwLock::new(State::Idle)),
-			source_queue: VecDeque::new(),
-			nb_queued: nb_queued.clone(),
-			source: None,
-			resampler: None,
-			buffering_since: Instant::now(),
-		};
 
-		let player_state = player.state.clone();
+		let decoder_player_state = player_state.clone();
+		let decoder_nb_queued = nb_queued.clone();
+		std::thread::Builder::new()
+			.name("decoder".to_owned())
+			.spawn(move || {
+				let (stream, config, audio_sink) = sink::AudioSink::new().unwrap();
+				debug!("launched decoder thread");
+				let mut player = Player {
+					receiver: from_controller,
+					config,
+					state: decoder_player_state,
+					source_queue: VecDeque::new(),
+					nb_queued: decoder_nb_queued,
+					source: None,
+					resampler: None,
+					audio_sink,
+					stream,
+				};
+				loop {
+					player.process();
+				}
+			})
+			.unwrap();
 
-		let stream = device.build_output_stream(
-			&config.into(),
-			move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-				player.process(data);
-			},
-			move |err| {
-				println!("{err:?}");
-			},
-		)?;
-
-		stream.play().unwrap();
-
-		Controller::new(player_state, to_player, stream, nb_queued)
+		Controller::new(player_state, to_player, nb_queued)
 	}
 
 	pub fn process_events(&mut self) {
@@ -98,19 +89,20 @@ impl Player {
 				}
 				Event::Play => {
 					self.state.write().play().ok();
+					self.stream.play().unwrap();
 				}
 				Event::Pause => {
 					self.state.write().pause().ok();
+					self.stream.pause().unwrap();
 				}
 				Event::Stop => {
+					self.stream.pause().unwrap();
 					*self.state.write() = State::Idle;
 				}
 				Event::Seek(position) => {
 					self.state.write().seek(position).unwrap();
 					match self.source.as_mut().map(|s| s.signal.seek(position)) {
-						Some(Err(SourceError::Buffering)) => {
-							self.buffering_since = Instant::now();
-						}
+						Some(Err(e)) => error!("{e:?}"),
 						_ => {}
 					}
 				}
@@ -135,7 +127,7 @@ impl Player {
 		}
 	}
 
-	pub fn process(&mut self, data: &mut [f32]) {
+	pub fn process(&mut self) {
 		self.process_events();
 
 		self.next_source();
@@ -146,51 +138,50 @@ impl Player {
 		};
 
 		if !playing {
-			for d in data {
-				*d = 0.0;
-			}
+			// for d in data {
+			// 	*d = 0.0;
+			// }
 			return;
 		}
 
 		let resampler = self.resampler.as_mut().unwrap();
 		let source = self.source.as_mut().unwrap();
 
-		if self.buffering_since.elapsed() < Duration::from_secs(1) {
-			for d in data {
-				*d = 0.0;
-			}
-			return;
-		}
+		let missing_data = self.audio_sink.slots();
 
-		for d in data.chunks_mut(2) {
-			if resampler.i >= resampler.out_buf[0].len() {
-				match resampler.process(source) {
-					Err(SourceError::Buffering) => {
-						// we should probably zero out the rest of the buffer
-						self.buffering_since = Instant::now();
-						return;
-					}
-					Err(SourceError::EndOfStream) => {
-						self.resampler = None;
-						self.source = None;
-						*self.state.write() = State::Idle;
-						self.next_source();
-						return;
-					}
-					Ok(()) => match self.state.write().deref_mut() {
-						State::Playing(state::Playing { offset, .. }) => {
-							*offset += Duration::from_secs_f64(
-								resampler.out_buf[0].len() as f64
-									/ self.config.sample_rate.0 as f64,
-							);
+		if missing_data > 512 {
+			for _ in 0..(missing_data / 2) {
+				if resampler.i >= resampler.out_buf[0].len() {
+					match resampler.process(source) {
+						Err(SourceError::EndOfStream) => {
+							self.resampler = None;
+							self.source = None;
+							*self.state.write() = State::Idle;
+							self.next_source();
+							return;
 						}
-						_ => {}
-					},
+						Err(e) => {
+							panic!("{e:?}");
+						}
+						Ok(()) => match self.state.write().deref_mut() {
+							State::Playing(state::Playing { offset, .. }) => {
+								*offset += Duration::from_secs_f64(
+									resampler.out_buf[0].len() as f64
+										/ self.config.sample_rate.0 as f64,
+								);
+							}
+							_ => {}
+						},
+					}
 				}
+				self.audio_sink
+					.push(resampler.out_buf[0][resampler.i])
+					.unwrap();
+				self.audio_sink
+					.push(resampler.out_buf[1][resampler.i])
+					.unwrap();
+				resampler.i += 1;
 			}
-			d[0] = resampler.out_buf[0][resampler.i];
-			d[1] = resampler.out_buf[1][resampler.i];
-			resampler.i += 1;
 		}
 	}
 }

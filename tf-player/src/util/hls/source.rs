@@ -53,17 +53,16 @@ impl MediaSource {
 			"grabbing segment {} from the cache...",
 			self.curr_segment_idx
 		);
-		let mut cache = self.segment_cache.lock();
-		let segment = match &cache.segments[self.curr_segment_idx] {
-			Some(s) => s.clone(),
-			None => {
-				debug!("failed to grab segment");
-				cache.buffering = true;
-				return Err(std::io::Error::new(
-					std::io::ErrorKind::WouldBlock,
-					"Buffering...",
-				));
+
+		let segment = loop {
+			let cache = self.segment_cache.lock();
+			match &cache.segments[self.curr_segment_idx] {
+				Some(s) => break s.clone(),
+				None => {
+					debug!("failed to grab segment, retrying...");
+				}
 			}
+			std::thread::sleep(Duration::from_millis(1000));
 		};
 		self.curr_segment = Some(segment);
 		Ok(())

@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use anyhow::Result;
 use hls_m3u8::MediaPlaylist;
 use parking_lot::Mutex;
-use symphonia::core::{formats::FormatReader, io::MediaSourceStream, probe::Hint};
+use symphonia::core::{formats::FormatReader, io::MediaSourceStream};
 
 use crate::{
 	util::{
@@ -17,7 +17,6 @@ pub struct SoundcloudSource {
 	segment_infos: SegmentInfos,
 	cache: Arc<Mutex<SegmentCache>>,
 	pub source: util::symphonia::Source,
-	seeking: Option<Duration>,
 }
 
 impl SoundcloudSource {
@@ -43,43 +42,29 @@ impl SoundcloudSource {
 			segment_infos,
 			cache,
 			source: symphonia_source,
-			seeking: None,
 		})
 	}
 }
 
 impl Source for SoundcloudSource {
 	fn seek(&mut self, pos: Duration) -> Result<(), crate::SourceError> {
-		match self.source.seek(pos) {
-			Err(crate::SourceError::Buffering) => {
-				let (curr_segment_idx, mut curr_offset) =
-					self.segment_infos.segment_at(pos).unwrap();
-				curr_offset = curr_offset.saturating_sub(5000); // safety to avoid not having enough data for symphonia
-				self.cache.lock().source_position = (curr_segment_idx, curr_offset);
-				self.seeking = Some(pos);
-				return Err(crate::SourceError::Buffering);
-			}
-			_ => {}
-		}
+		// Once symphonia's Mp3Reader supports SeekMode::Coarse,
+		// we can just replace this by: self.source.seek(pos)
+		// Until then, we recreate the source at the new location
+		let hls_source = hls::MediaSource::new(
+			self.source.duration,
+			self.segment_infos.clone(),
+			self.cache.clone(),
+			pos,
+		);
+		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
+		let format =
+			symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default()).unwrap();
+		self.source = util::symphonia::Source::from_format_reader(Box::new(format)).unwrap();
 		Ok(())
 	}
 
 	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
-		if let Some(pos) = self.seeking {
-			if !self.cache.lock().buffering {
-				self.seeking = None;
-				let hls_source = hls::MediaSource::new(
-					self.source.duration,
-					self.segment_infos.clone(),
-					self.cache.clone(),
-					pos,
-				);
-				let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
-				self.source = util::symphonia::Source::from_mss(mss, Hint::new()).unwrap();
-			} else {
-				return Err(crate::SourceError::Buffering);
-			}
-		}
 		self.source.next(buf)
 	}
 }

@@ -16,7 +16,7 @@ pub struct SongSource {
 
 #[derive(Debug)]
 pub enum SourceError {
-	Buffering,
+	General(Box<dyn std::error::Error>),
 	EndOfStream,
 }
 

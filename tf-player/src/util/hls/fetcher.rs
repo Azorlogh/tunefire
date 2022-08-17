@@ -72,7 +72,7 @@ impl Fetcher {
 					}
 				}
 			}
-			std::thread::sleep(Duration::from_secs(1));
+			std::thread::sleep(Duration::from_millis(100));
 		}
 	}
 }

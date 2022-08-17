@@ -17,7 +17,7 @@ pub struct Controller {
 	sender: crossbeam_channel::Sender<Event>,
 	state: Arc<RwLock<super::State>>,
 	plugins: Vec<Box<dyn SourcePlugin>>,
-	_stream: cpal::Stream,
+	// _stream: cpal::Stream,
 	nb_queued: Arc<AtomicUsize>,
 }
 
@@ -31,7 +31,7 @@ impl Controller {
 	pub fn new(
 		state: Arc<RwLock<super::State>>,
 		sender: crossbeam_channel::Sender<Event>,
-		stream: cpal::Stream,
+		// stream: cpal::Stream,
 		nb_queued: Arc<AtomicUsize>,
 	) -> Result<Self> {
 		Ok(Self {
@@ -42,7 +42,7 @@ impl Controller {
 				Box::new(SoundcloudPlugin::new()?),
 				Box::new(YoutubePlugin::new()?),
 			],
-			_stream: stream,
+			// _stream: stream,
 			nb_queued,
 		})
 	}

@@ -1,11 +1,9 @@
-use std::{
-	sync::{atomic::AtomicBool, mpsc, Arc},
-	time::Duration,
-};
+use std::{sync::mpsc, time::Duration};
 
 use anyhow::{anyhow, Result};
 use symphonia::core::{io::MediaSourceStream, probe::Hint};
 use tokio::runtime::Runtime;
+use tracing::debug;
 use url::Url;
 
 use crate::{
@@ -70,63 +68,32 @@ impl SourcePlugin for YoutubePlugin {
 }
 
 pub struct YoutubeSource {
-	url: Url,
 	pub source: util::symphonia::Source,
-	seeking: Option<Duration>,
-	buffering: Arc<AtomicBool>,
 }
 
 impl YoutubeSource {
 	pub fn new(url: &Url) -> Result<Self> {
-		let buffering = Arc::new(AtomicBool::new(true));
+		let media_source = HttpProgressive::new(url.as_str())?;
 
-		let media_source = HttpProgressive::new(url.as_str(), buffering.clone())?;
-
-		println!("created the media source!");
+		debug!("created the media source for youtube");
 
 		let mss = MediaSourceStream::new(Box::new(media_source), Default::default());
 		let mut hint = Hint::new();
 		hint.mime_type("audio/aac");
 		let source = util::symphonia::Source::from_mss(mss, hint)?;
 
-		println!("symphonia source made!");
+		debug!("created symphonia source for youtube");
 
-		Ok(Self {
-			url: url.to_owned(),
-			source,
-			seeking: None,
-			buffering,
-		})
+		Ok(Self { source })
 	}
 }
 
 impl Source for YoutubeSource {
 	fn seek(&mut self, pos: Duration) -> Result<(), crate::SourceError> {
-		match self.source.seek(pos) {
-			Err(crate::SourceError::Buffering) => {
-				self.seeking = Some(pos);
-				return Err(crate::SourceError::Buffering);
-			}
-			_ => {}
-		}
-		Ok(())
+		self.source.seek(pos)
 	}
 
 	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
-		if let Some(_) = self.seeking {
-			if !self.buffering.load(std::sync::atomic::Ordering::Relaxed) {
-				self.seeking = None;
-				let media_source =
-					HttpProgressive::new(self.url.as_str(), self.buffering.clone()).unwrap();
-
-				let mss = MediaSourceStream::new(Box::new(media_source), Default::default());
-				let mut hint = Hint::new();
-				hint.mime_type("audio/aac");
-				self.source = util::symphonia::Source::from_mss(mss, hint).unwrap();
-			} else {
-				return Err(crate::SourceError::Buffering);
-			}
-		}
 		self.source.next(buf)
 	}
 }
