@@ -12,7 +12,7 @@ use cpal::{traits::StreamTrait, StreamConfig};
 use parking_lot::RwLock;
 use tracing::{debug, error};
 
-use crate::{SongSource, SourceError};
+use crate::{SourceError, TrackSource};
 
 pub mod sink;
 pub mod state;
@@ -25,7 +25,7 @@ mod controller;
 pub use controller::Controller;
 
 pub enum Event {
-	QueueSong(SongSource),
+	QueueTrack(TrackSource),
 	Play,
 	Pause,
 	Stop,
@@ -36,9 +36,9 @@ pub struct Player {
 	receiver: crossbeam_channel::Receiver<Event>,
 	config: StreamConfig,
 	state: Arc<RwLock<State>>,
-	source_queue: VecDeque<SongSource>,
+	source_queue: VecDeque<TrackSource>,
 	nb_queued: Arc<AtomicUsize>, // invariant: nb_queued == source_queue.len()
-	source: Option<SongSource>,
+	source: Option<TrackSource>,
 	resampler: Option<Resampler>,
 	audio_sink: rtrb::Producer<f32>,
 	stream: cpal::Stream,
@@ -82,7 +82,7 @@ impl Player {
 	pub fn process_events(&mut self) {
 		while let Ok(event) = self.receiver.try_recv() {
 			match event {
-				Event::QueueSong(source) => {
+				Event::QueueTrack(source) => {
 					self.source_queue.push_back(source);
 					self.nb_queued
 						.store(self.source_queue.len(), atomic::Ordering::Relaxed);
@@ -120,7 +120,7 @@ impl Player {
 				Resampler::new((self.config.sample_rate.0 as f64) / source_sample_rate).unwrap();
 			resampler.process(&mut source).ok();
 			self.resampler = Some(resampler);
-			self.state.write().set_song(source.info.clone());
+			self.state.write().set_track(source.info.clone());
 			self.source = Some(source);
 			self.nb_queued
 				.store(self.source_queue.len(), atomic::Ordering::Relaxed);

@@ -4,7 +4,7 @@ use druid::{
 	widget::{Button, Container, Flex, Label, List, Maybe, Painter, SizedBox},
 	BoxConstraints, Data, EventCtx, Lens, Size, Widget, WidgetExt,
 };
-use tf_db::Song;
+use tf_db::Track;
 use tf_player::player::state::Playing;
 
 use super::{draw_icon_button, ICON_NEXT, ICON_PAUSE, ICON_PLAY, ICON_PREV};
@@ -17,7 +17,7 @@ use crate::{
 #[derive(Clone, Data, Lens)]
 pub struct MediaBarState {
 	pub playing: Rc<Playing>,
-	pub current_song: Option<Rc<Song>>,
+	pub current_track: Option<Rc<Track>>,
 }
 
 pub fn ui() -> impl Widget<MediaBarState> {
@@ -41,17 +41,17 @@ pub fn ui() -> impl Widget<MediaBarState> {
 									.with_child(
 										Maybe::new(
 											|| {
-												Label::new(|data: &Rc<Song>, _: &_| {
+												Label::new(|data: &Rc<Track>, _: &_| {
 													data.title.clone()
 												})
 											},
 											|| SizedBox::empty(),
 										)
-										.lens(State::current_song),
+										.lens(State::current_track),
 									)
 									.with_flex_child(
 										List::new(|| {
-											Label::new(|data: &Rc<Song>, _: &_| data.title.clone())
+											Label::new(|data: &Rc<Track>, _: &_| data.title.clone())
 										})
 										.lens(State::queue),
 										1.0,
@@ -64,8 +64,8 @@ pub fn ui() -> impl Widget<MediaBarState> {
 			},
 		));
 
-	let song_info = Maybe::new(
-		|| Label::new(|data: &Rc<Song>, _: &_| format!("{} - {}", data.artist, data.title)),
+	let track_info = Maybe::new(
+		|| Label::new(|data: &Rc<Track>, _: &_| format!("{} - {}", data.artist, data.title)),
 		|| SizedBox::empty(),
 	)
 	.expand_width();
@@ -73,7 +73,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 	Flex::column()
 		.with_child(
 			Flex::row()
-				.with_flex_child(song_info.lens(MediaBarState::current_song), 1.0)
+				.with_flex_child(track_info.lens(MediaBarState::current_track), 1.0)
 				.with_child(buttons.lens(MediaBarState::playing))
 				.with_flex_child(right_buttons, 1.0),
 		)
@@ -86,7 +86,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 				.with_flex_child(PlayerBar::default(), 1.0)
 				.with_default_spacer()
 				.with_child(Label::new(|data: &Rc<Playing>, _: &_| {
-					format_duration(&data.song.duration)
+					format_duration(&data.track.duration)
 				}))
 				.lens(MediaBarState::playing),
 		)

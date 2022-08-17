@@ -18,7 +18,7 @@ impl<T, W: Widget<T>> Controller<T, W> for PlayerTick {
 				ctx.submit_command(command::PLAYER_TICK);
 				self.timer = Some(ctx.request_timer(DT));
 			}
-			Event::Command(c) if c.is(command::SONG_PLAY) || c.is(command::QUERY_PLAY) => {
+			Event::Command(c) if c.is(command::TRACK_PLAY) || c.is(command::QUERY_PLAY) => {
 				self.timer = Some(ctx.request_timer(DT));
 			}
 			_ => {}

@@ -3,7 +3,7 @@ use std::{rc::Rc, time::Duration};
 use anyhow::Result;
 use druid::{im, AppDelegate};
 use souvlaki::MediaControlEvent;
-use tf_db::Song;
+use tf_db::Track;
 use tf_player::player::{self, Player};
 use tracing::{error, warn};
 use url::Url;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
 	command,
 	media_controls::MediaControls,
-	state::{NewSong, SongEdit, SongListItem},
+	state::{NewTrack, TrackEdit, TrackListItem},
 	State,
 };
 
@@ -31,11 +31,11 @@ impl Delegate {
 		})
 	}
 
-	pub fn queue_song(&mut self, data: &mut State, song: Song) {
+	pub fn queue_track(&mut self, data: &mut State, track: Track) {
 		self.player
-			.queue_song(Url::parse(&song.source).unwrap())
+			.queue_track(Url::parse(&track.source).unwrap())
 			.unwrap();
-		data.current_song = Some(Rc::new(song));
+		data.current_track = Some(Rc::new(track));
 		self.update_media_controls(data);
 		self.play();
 	}
@@ -63,11 +63,11 @@ impl Delegate {
 	}
 
 	pub fn update_media_controls(&mut self, data: &State) {
-		match &data.current_song {
-			Some(song) => {
+		match &data.current_track {
+			Some(track) => {
 				self.media_controls
 					.as_mut()
-					.map(|c| c.set_metadata(&song.artist, &song.title));
+					.map(|c| c.set_metadata(&track.artist, &track.title));
 
 				self.media_controls.as_mut().map(|c| {
 					c.set_is_playing(true).ok();
@@ -107,11 +107,11 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::QUERY_RUN) => {
 				match data.query.parse::<tf_db::Filter>() {
 					Ok(filter) => match self.db.list_filtered(&filter) {
-						Ok(songs) => {
-							data.songs = songs
+						Ok(tracks) => {
+							data.tracks = tracks
 								.iter()
-								.map(|s| SongListItem {
-									song: Rc::new(s.clone()),
+								.map(|s| TrackListItem {
+									track: Rc::new(s.clone()),
 									selected: false,
 								})
 								.collect();
@@ -123,14 +123,14 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::QUERY_PLAY) => {
-				let mut queue: im::Vector<Rc<Song>> = data
-					.songs
+				let mut queue: im::Vector<Rc<Track>> = data
+					.tracks
 					.iter()
-					.filter_map(|item| self.db.get_song(item.song.id).ok())
+					.filter_map(|item| self.db.get_track(item.track.id).ok())
 					.map(|s| Rc::new(s))
 					.collect();
-				if let Some(song) = queue.pop_front() {
-					self.queue_song(data, (*song).clone());
+				if let Some(track) = queue.pop_front() {
+					self.queue_track(data, (*track).clone());
 				}
 				data.queue = queue;
 				druid::Handled::No
@@ -147,32 +147,32 @@ impl AppDelegate<State> for Delegate {
 
 				// update player bar
 				let ps = (*self.player.state().read()).clone();
-				// queue next song
+				// queue next track
 				let until_empty = ps
 					.get_playing()
-					.map(|p| p.song.duration - p.offset)
+					.map(|p| p.track.duration - p.offset)
 					.unwrap_or_default() + Duration::from_secs(
 					self.player.nb_queued() as u64 * 10000000,
 				);
 				if until_empty < Duration::from_secs(1) {
-					if let Some(song) = data.queue.pop_front() {
+					if let Some(track) = data.queue.pop_front() {
 						self.player
-							.queue_song(Url::parse(&song.source).unwrap())
+							.queue_track(Url::parse(&track.source).unwrap())
 							.unwrap();
-						data.current_song = Some(song);
+						data.current_track = Some(track);
 						self.update_media_controls(data);
 					} else {
-						data.current_song = None;
+						data.current_track = None;
 						self.update_media_controls(data);
 					}
 				}
 				data.player_state = Rc::new(ps);
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::SONG_PLAY) => {
-				let id = cmd.get::<Uuid>(command::SONG_PLAY).unwrap();
-				let song = self.db.get_song(*id).unwrap();
-				self.queue_song(data, song);
+			_ if cmd.is(command::TRACK_PLAY) => {
+				let id = cmd.get::<Uuid>(command::TRACK_PLAY).unwrap();
+				let track = self.db.get_track(*id).unwrap();
+				self.queue_track(data, track);
 				druid::Handled::No
 			}
 			_ if cmd.is(command::PLAYER_PLAY_PAUSE) => {
@@ -186,65 +186,65 @@ impl AppDelegate<State> for Delegate {
 			}
 
 			// ui
-			_ if cmd.is(command::UI_SONG_EDIT_OPEN) => {
-				let id = cmd.get::<Uuid>(command::UI_SONG_EDIT_OPEN).unwrap();
-				data.songs.iter_mut().for_each(|item| {
-					item.selected = item.song.id == *id;
+			_ if cmd.is(command::UI_TRACK_EDIT_OPEN) => {
+				let id = cmd.get::<Uuid>(command::UI_TRACK_EDIT_OPEN).unwrap();
+				data.tracks.iter_mut().for_each(|item| {
+					item.selected = item.track.id == *id;
 				});
-				if let Ok(song) = self.db.get_song(*id) {
-					data.song_edit = Some(SongEdit::new(song));
+				if let Ok(track) = self.db.get_track(*id) {
+					data.track_edit = Some(TrackEdit::new(track));
 				}
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::UI_SONG_EDIT_CLOSE) => {
-				data.song_edit = None;
+			_ if cmd.is(command::UI_TRACK_EDIT_CLOSE) => {
+				data.track_edit = None;
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::UI_SONG_ADD_OPEN) => {
-				let source = cmd.get::<String>(command::UI_SONG_ADD_OPEN).unwrap();
-				data.new_song = Some(NewSong {
+			_ if cmd.is(command::UI_TRACK_ADD_OPEN) => {
+				let source = cmd.get::<String>(command::UI_TRACK_ADD_OPEN).unwrap();
+				data.new_track = Some(NewTrack {
 					source: source.clone(),
 					title: String::new(),
 					artist: String::new(),
 				});
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::UI_SONG_ADD_CLOSE) => {
-				data.new_song = None;
+			_ if cmd.is(command::UI_TRACK_ADD_CLOSE) => {
+				data.new_track = None;
 				druid::Handled::Yes
 			}
 
 			// db
-			_ if cmd.is(command::SONG_ADD) => {
-				let NewSong {
+			_ if cmd.is(command::TRACK_ADD) => {
+				let NewTrack {
 					source,
 					artist,
 					title,
-				} = cmd.get::<NewSong>(command::SONG_ADD).unwrap();
-				match self.db.add_song(source, artist, title) {
+				} = cmd.get::<NewTrack>(command::TRACK_ADD).unwrap();
+				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
-						let song = self.db.get_song(id).unwrap();
-						data.songs.push_back(SongListItem {
-							song: Rc::new(song),
+						let track = self.db.get_track(id).unwrap();
+						data.tracks.push_back(TrackListItem {
+							track: Rc::new(track),
 							selected: true,
 						});
-						data.new_song_url = String::new();
-						data.new_song = None;
+						data.new_track_url = String::new();
+						data.new_track = None;
 					}
 					Err(e) => error!("{:?}", e),
 				}
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::SONG_DELETE) => {
-				let id = cmd.get::<Uuid>(command::SONG_DELETE).unwrap();
-				if let Ok(()) = self.db.delete_song(*id) {
-					data.songs.retain(|item| item.song.id != *id);
+			_ if cmd.is(command::TRACK_DELETE) => {
+				let id = cmd.get::<Uuid>(command::TRACK_DELETE).unwrap();
+				if let Ok(()) = self.db.delete_track(*id) {
+					data.tracks.retain(|item| item.track.id != *id);
 				}
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TAG_ADD) => {
 				cmd.get::<Uuid>(command::TAG_ADD).unwrap();
-				data.song_edit
+				data.track_edit
 					.as_mut()
 					.unwrap()
 					.tags
@@ -252,33 +252,33 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TAG_RENAME) => {
-				let song_edit = data.song_edit.as_mut().unwrap();
+				let track_edit = data.track_edit.as_mut().unwrap();
 				let (from, to) = cmd.get::<(String, String)>(command::TAG_RENAME).unwrap();
 				if from != "" {
-					self.db.set_tag(*song_edit.id, from, 0.0).unwrap();
+					self.db.set_tag(*track_edit.id, from, 0.0).unwrap();
 				}
-				let tag = song_edit.tags.iter().find(|tag| &tag.0 == to).unwrap();
-				self.db.set_tag(*song_edit.id, to, tag.1).unwrap();
+				let tag = track_edit.tags.iter().find(|tag| &tag.0 == to).unwrap();
+				self.db.set_tag(*track_edit.id, to, tag.1).unwrap();
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TAG_TWEAK) => {
-				let song_edit = data.song_edit.as_mut().unwrap();
+				let track_edit = data.track_edit.as_mut().unwrap();
 				let (name, value) = cmd.get::<(String, f32)>(command::TAG_TWEAK).unwrap();
 				if name != "" {
-					self.db.set_tag(*song_edit.id, name, *value).unwrap();
+					self.db.set_tag(*track_edit.id, name, *value).unwrap();
 				}
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TAG_DELETE) => {
 				let tag_name = cmd.get::<String>(command::TAG_DELETE).unwrap();
-				let song_edit = data.song_edit.as_mut().unwrap();
-				match song_edit.tags.iter().find(|tag| &tag.0 == tag_name) {
+				let track_edit = data.track_edit.as_mut().unwrap();
+				match track_edit.tags.iter().find(|tag| &tag.0 == tag_name) {
 					Some((name, _)) => {
-						self.db.set_tag(*song_edit.id, &name, 0.0).unwrap();
+						self.db.set_tag(*track_edit.id, &name, 0.0).unwrap();
 					}
 					_ => {}
 				}
-				song_edit.tags.retain(|item| &item.0 != tag_name);
+				track_edit.tags.retain(|item| &item.0 != tag_name);
 				druid::Handled::Yes
 			}
 			_ => druid::Handled::No,

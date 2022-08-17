@@ -11,7 +11,7 @@ use parking_lot::RwLock;
 use url::Url;
 
 use super::Event;
-use crate::{LocalPlugin, SongSource, SoundcloudPlugin, SourcePlugin, YoutubePlugin};
+use crate::{LocalPlugin, SoundcloudPlugin, SourcePlugin, TrackSource, YoutubePlugin};
 
 pub struct Controller {
 	sender: crossbeam_channel::Sender<Event>,
@@ -47,12 +47,12 @@ impl Controller {
 		})
 	}
 
-	fn create_source(&self, url: &Url) -> Result<SongSource> {
+	fn create_source(&self, url: &Url) -> Result<TrackSource> {
 		for plugin in &self.plugins {
 			if let Some(source) = plugin.handle_url(&url) {
 				let source = source.map_err(|err| {
 					anyhow!(
-						"plugin {} failed to handle this song {}",
+						"plugin {} failed to handle this track {}",
 						plugin.name(),
 						err
 					)
@@ -60,12 +60,12 @@ impl Controller {
 				return Ok(source);
 			}
 		}
-		Err(anyhow!("no plugin could find this song"))
+		Err(anyhow!("no plugin could find this track"))
 	}
 
-	pub fn queue_song(&mut self, url: Url) -> Result<()> {
+	pub fn queue_track(&mut self, url: Url) -> Result<()> {
 		let source = self.create_source(&url)?;
-		if let Err(e) = self.sender.send(Event::QueueSong(source)) {
+		if let Err(e) = self.sender.send(Event::QueueTrack(source)) {
 			panic!("{:?}", e);
 		}
 		Ok(())

@@ -1,4 +1,4 @@
-INSERT INTO songs
+INSERT INTO tracks
 VALUES
 	(
 		'03f221f0-ff57-4c56-ad8c-e8e7bec996a0',
@@ -36,7 +36,7 @@ VALUES
 		"regular"
 	);
 
-INSERT INTO song_tags
+INSERT INTO track_tags
 VALUES
 	(
 		'03f221f0-ff57-4c56-ad8c-e8e7bec996a0',

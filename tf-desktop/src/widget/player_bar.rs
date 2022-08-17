@@ -34,7 +34,7 @@ impl Widget<Data> for PlayerBar {
 			}
 			Event::MouseUp(evt) => {
 				if ctx.is_active() && !ctx.is_disabled() {
-					let position = data.song.duration.mul_f64(evt.pos.x / ctx.size().width);
+					let position = data.track.duration.mul_f64(evt.pos.x / ctx.size().width);
 					ctx.submit_command(command::PLAYER_SEEK.with(position));
 					ctx.request_paint();
 				}
@@ -85,7 +85,7 @@ impl Widget<Data> for PlayerBar {
 		let progress = if ctx.is_active() {
 			self.position_preview
 		} else {
-			data.offset.as_secs_f64() / data.song.duration.as_secs_f64()
+			data.offset.as_secs_f64() / data.track.duration.as_secs_f64()
 		};
 		let progress_right = Point::new(size.width * progress, size.height / 2.0);
 

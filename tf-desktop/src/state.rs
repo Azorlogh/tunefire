@@ -2,43 +2,43 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use druid::{im, Data, Lens};
-use tf_db::Song;
+use tf_db::Track;
 use tf_player::player;
 use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
-	pub songs: im::Vector<SongListItem>,
+	pub tracks: im::Vector<TrackListItem>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
-	pub queue: im::Vector<Rc<Song>>,
+	pub queue: im::Vector<Rc<Track>>,
 	pub query: String,
-	pub new_song: Option<NewSong>,
-	pub new_song_url: String,
-	pub song_edit: Option<SongEdit>,
-	pub current_song: Option<Rc<Song>>,
+	pub new_track: Option<NewTrack>,
+	pub new_track_url: String,
+	pub track_edit: Option<TrackEdit>,
+	pub current_track: Option<Rc<Track>>,
 }
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let songs: im::Vector<_> = db
+		let tracks: im::Vector<_> = db
 			.list()?
 			.iter()
-			.map(|s| SongListItem {
-				song: Rc::new(s.clone()),
+			.map(|s| TrackListItem {
+				track: Rc::new(s.clone()),
 				selected: false,
 			})
 			.collect();
 
 		Ok(Self {
 			player_state: Rc::new(player::State::default()),
-			songs,
+			tracks,
 			queue: im::Vector::new(),
 			query: String::new(),
-			new_song: None,
-			new_song_url: String::new(),
-			song_edit: None,
-			current_song: None,
+			new_track: None,
+			new_track_url: String::new(),
+			track_edit: None,
+			current_track: None,
 		})
 	}
 
@@ -60,33 +60,33 @@ impl State {
 }
 
 #[derive(Clone, Default, Data, Lens)]
-pub struct NewSong {
+pub struct NewTrack {
 	pub source: String,
 	pub title: String,
 	pub artist: String,
 }
 
 #[derive(Clone, Data, Lens)]
-pub struct SongEdit {
+pub struct TrackEdit {
 	pub id: Rc<Uuid>,
 	pub title: String,
 	pub source: String,
 	pub tags: im::Vector<(String, f32)>,
 }
 
-impl SongEdit {
-	pub fn new(song: Song) -> Self {
+impl TrackEdit {
+	pub fn new(track: Track) -> Self {
 		Self {
-			id: Rc::new(song.id),
-			title: song.title,
-			source: song.source,
-			tags: im::Vector::from_iter(song.tags.clone()),
+			id: Rc::new(track.id),
+			title: track.title,
+			source: track.source,
+			tags: im::Vector::from_iter(track.tags.clone()),
 		}
 	}
 }
 
 #[derive(Clone, Data, Lens)]
-pub struct SongListItem {
+pub struct TrackListItem {
 	pub selected: bool,
-	pub song: Rc<Song>,
+	pub track: Rc<Track>,
 }

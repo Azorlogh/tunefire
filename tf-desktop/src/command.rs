@@ -3,7 +3,7 @@ use std::time::Duration;
 use druid::Selector;
 use uuid::Uuid;
 
-use crate::state::NewSong;
+use crate::state::NewTrack;
 
 // Query
 pub const QUERY_RUN: Selector = Selector::new("query.run");
@@ -16,15 +16,15 @@ pub const PLAYER_SEEK: Selector<Duration> = Selector::new("player.seek");
 pub const PLAYER_PREV: Selector = Selector::new("player.prev");
 pub const PLAYER_NEXT: Selector = Selector::new("player.next");
 
-pub const SONG_PLAY: Selector<Uuid> = Selector::new("song-play");
-pub const UI_SONG_EDIT_OPEN: Selector<Uuid> = Selector::new("ui.song-edit.open");
-pub const UI_SONG_EDIT_CLOSE: Selector = Selector::new("ui.song-edit.close");
-pub const UI_SONG_ADD_OPEN: Selector<String> = Selector::new("ui.song-add.open");
-pub const UI_SONG_ADD_CLOSE: Selector = Selector::new("ui.song-add.close");
+pub const TRACK_PLAY: Selector<Uuid> = Selector::new("track-play");
+pub const UI_TRACK_EDIT_OPEN: Selector<Uuid> = Selector::new("ui.track-edit.open");
+pub const UI_TRACK_EDIT_CLOSE: Selector = Selector::new("ui.track-edit.close");
+pub const UI_TRACK_ADD_OPEN: Selector<String> = Selector::new("ui.track-add.open");
+pub const UI_TRACK_ADD_CLOSE: Selector = Selector::new("ui.track-add.close");
 
 // Database editing
-pub const SONG_ADD: Selector<NewSong> = Selector::new("song.add");
-pub const SONG_DELETE: Selector<Uuid> = Selector::new("song.delete");
+pub const TRACK_ADD: Selector<NewTrack> = Selector::new("track.add");
+pub const TRACK_DELETE: Selector<Uuid> = Selector::new("track.delete");
 
 pub const TAG_ADD: Selector<Uuid> = Selector::new("tag.add");
 pub const TAG_RENAME: Selector<(String, String)> = Selector::new("tag.rename");

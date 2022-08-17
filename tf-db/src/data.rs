@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
-pub struct Song {
+pub struct Track {
 	pub id: Uuid,
 	pub source: String,
 	pub artist: String,

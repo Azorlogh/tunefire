@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use tracing::debug;
 use url::Url;
 
-use crate::{SongInfo, SongSource, SourcePlugin};
+use crate::{SourcePlugin, TrackInfo, TrackSource};
 
 mod api;
 mod source;
@@ -39,7 +39,7 @@ impl SoundcloudPlugin {
 		Ok(Self { client_id })
 	}
 
-	pub fn handle(&self, url: &Url) -> Result<SongSource> {
+	pub fn handle(&self, url: &Url) -> Result<TrackSource> {
 		let resolve: api::ResolveResponse = serde_json::from_str(
 			&ureq::get(&format!(
 				"https://api-v2.soundcloud.com/resolve?client_id={}&url={}",
@@ -68,8 +68,8 @@ impl SoundcloudPlugin {
 
 		let source = source::SoundcloudSource::new(&hls)?;
 
-		Ok(SongSource {
-			info: SongInfo {
+		Ok(TrackSource {
+			info: TrackInfo {
 				duration: source.source.duration,
 			},
 			sample_rate: source.source.sample_rate,
@@ -83,7 +83,7 @@ impl SourcePlugin for SoundcloudPlugin {
 		"Soundcloud"
 	}
 
-	fn handle_url(&self, url: &Url) -> Option<Result<SongSource>> {
+	fn handle_url(&self, url: &Url) -> Option<Result<TrackSource>> {
 		(url.scheme() == "https" && url.host_str() == Some("soundcloud.com"))
 			.then(|| self.handle(url))
 	}

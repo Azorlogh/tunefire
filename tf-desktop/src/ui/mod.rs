@@ -16,7 +16,7 @@ use tf_player::player;
 use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	state::{SongEdit, SongListItem},
+	state::{TrackEdit, TrackListItem},
 	theme,
 	widget::{
 		common::stack::Stack, controllers::Enter, overlay::Overlay, player_tick::PlayerTick,
@@ -25,9 +25,9 @@ use crate::{
 	State,
 };
 
-const SONG_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("song_list.item.background");
+const TRACK_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("track_list.item.background");
 
-mod add_song;
+mod add_track;
 mod media_bar;
 
 pub fn ui() -> impl Widget<State> {
@@ -35,12 +35,12 @@ pub fn ui() -> impl Widget<State> {
 
 	let main_view = Flex::row()
 		.with_flex_child(
-			Scroll::new(songs_ui().lens(State::songs))
+			Scroll::new(tracks_ui().lens(State::tracks))
 				.vertical()
 				.expand_height(),
 			1.0,
 		)
-		.with_child(Maybe::new(|| song_edit(), || SizedBox::empty()).lens(State::song_edit));
+		.with_child(Maybe::new(|| track_edit(), || SizedBox::empty()).lens(State::track_edit));
 
 	let mut root = Flex::column();
 	root.add_default_spacer();
@@ -55,7 +55,7 @@ pub fn ui() -> impl Widget<State> {
 			|s: &State| {
 				s.player_state.get_playing().map(|p| MediaBarState {
 					playing: Rc::new(p.clone()),
-					current_song: s.current_song.clone(),
+					current_track: s.current_track.clone(),
 				})
 			},
 			|s: &mut State, inner: Option<MediaBarState>| {
@@ -71,29 +71,29 @@ pub fn ui() -> impl Widget<State> {
 		Stack::new()
 			.with_child(root.padding(10.0).expand_width())
 			.with_child(
-				Maybe::new(|| add_song::add_song(), || SizedBox::empty()).lens(State::new_song),
+				Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
 			)
 			.with_child(Overlay::new()),
 		PlayerTick::default(),
 	)
 }
 
-fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
+fn tracks_ui() -> impl Widget<im::Vector<TrackListItem>> {
 	List::new(|| {
 		let row = Flex::row()
-			.with_child(play_song_button())
+			.with_child(play_track_button())
 			.with_default_spacer()
 			.with_flex_child(
 				Flex::column()
 					.with_child(
-						Label::new(|item: &SongListItem, _: &_| item.song.title.to_owned())
+						Label::new(|item: &TrackListItem, _: &_| item.track.title.to_owned())
 							.with_text_size(16.0)
 							.fix_height(24.0)
 							.expand_width(),
 					)
 					.with_child(EnvScope::new(
 						|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
-						Label::new(|item: &SongListItem, _: &_| item.song.artist.to_owned())
+						Label::new(|item: &TrackListItem, _: &_| item.track.artist.to_owned())
 							.with_text_size(13.0)
 							.fix_height(10.0)
 							.expand_width(),
@@ -103,15 +103,15 @@ fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
 			.with_child(
 				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_EDIT))
 					.fix_size(36.0, 36.0)
-					.on_click(|ctx: &mut EventCtx, item: &mut SongListItem, _| {
-						ctx.submit_command(command::UI_SONG_EDIT_OPEN.with(item.song.id))
+					.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
+						ctx.submit_command(command::UI_TRACK_EDIT_OPEN.with(item.track.id))
 					}),
 			)
 			.with_child(
 				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
 					.fix_size(36.0, 36.0)
-					.on_click(|ctx: &mut EventCtx, item: &mut SongListItem, _| {
-						ctx.submit_command(command::SONG_DELETE.with(item.song.id))
+					.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
+						ctx.submit_command(command::TRACK_DELETE.with(item.track.id))
 					}),
 			)
 			.expand_width()
@@ -120,7 +120,7 @@ fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
 		EnvScope::new(
 			|env, state| {
 				env.set(
-					SONG_LIST_ITEM_BACKGROUND,
+					TRACK_LIST_ITEM_BACKGROUND,
 					if state.selected {
 						env.get(crate::theme::BACKGROUND_HIGHLIGHT0)
 					} else {
@@ -128,7 +128,7 @@ fn songs_ui() -> impl Widget<im::Vector<SongListItem>> {
 					},
 				)
 			},
-			Container::new(row).background(SONG_LIST_ITEM_BACKGROUND),
+			Container::new(row).background(TRACK_LIST_ITEM_BACKGROUND),
 		)
 	})
 	.expand_width()
@@ -158,29 +158,29 @@ fn query_box() -> impl Widget<State> {
 		.with_default_spacer()
 }
 
-fn song_edit() -> impl Widget<SongEdit> {
+fn track_edit() -> impl Widget<TrackEdit> {
 	let col =
 		Flex::column()
 			.cross_axis_alignment(CrossAxisAlignment::Fill)
 			.with_child(
 				Flex::row()
 					.with_child(Label::new("title"))
-					.with_child(TextBox::new().lens(SongEdit::title)),
+					.with_child(TextBox::new().lens(TrackEdit::title)),
 			)
 			.with_default_spacer()
 			.with_child(
 				Flex::row()
 					.with_child(Label::new("source"))
-					.with_child(TextBox::new().lens(SongEdit::source)),
+					.with_child(TextBox::new().lens(TrackEdit::source)),
 			)
 			.with_default_spacer()
-			.with_child(List::new(|| TagEdit::new()).lens(SongEdit::tags))
-			.with_child(Button::new("+").on_click(|ctx, data: &mut SongEdit, _| {
+			.with_child(List::new(|| TagEdit::new()).lens(TrackEdit::tags))
+			.with_child(Button::new("+").on_click(|ctx, data: &mut TrackEdit, _| {
 				ctx.submit_command(command::TAG_ADD.with(*data.id))
 			}))
 			.with_flex_spacer(1.0)
-			.with_child(Button::new("CLOSE").on_click(|ctx, _: &mut SongEdit, _| {
-				ctx.submit_command(command::UI_SONG_EDIT_CLOSE)
+			.with_child(Button::new("CLOSE").on_click(|ctx, _: &mut TrackEdit, _| {
+				ctx.submit_command(command::UI_TRACK_EDIT_CLOSE)
 			}))
 			.env_scope(|env, _| env.set(druid::theme::BORDER_DARK, Color::TRANSPARENT))
 			.fix_width(400.0)
@@ -192,11 +192,11 @@ fn url_bar() -> impl Widget<State> {
 	ControllerHost::new(
 		TextBox::new().with_placeholder("Source"),
 		Enter::new(|ctx, data: &mut String, _| {
-			ctx.submit_command(command::UI_SONG_ADD_OPEN.with(data.to_owned()))
+			ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
 		}),
 	)
 	.expand_width()
-	.lens(State::new_song_url)
+	.lens(State::new_track_url)
 }
 
 fn play_query_button() -> impl Widget<State> {
@@ -207,11 +207,11 @@ fn play_query_button() -> impl Widget<State> {
 		})
 }
 
-fn play_song_button() -> impl Widget<SongListItem> {
-	Painter::new(|ctx, _: &SongListItem, env| draw_icon_button(ctx, env, ICON_PLAY))
+fn play_track_button() -> impl Widget<TrackListItem> {
+	Painter::new(|ctx, _: &TrackListItem, env| draw_icon_button(ctx, env, ICON_PLAY))
 		.fix_size(36.0, 36.0)
-		.on_click(|ctx: &mut EventCtx, item: &mut SongListItem, _| {
-			ctx.submit_command(command::SONG_PLAY.with(item.song.id));
+		.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
+			ctx.submit_command(command::TRACK_PLAY.with(item.track.id));
 		})
 }
 

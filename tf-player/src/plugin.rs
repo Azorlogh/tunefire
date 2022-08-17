@@ -4,14 +4,14 @@ use anyhow::Result;
 use url::Url;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SongInfo {
+pub struct TrackInfo {
 	pub duration: Duration,
 }
 
-pub struct SongSource {
+pub struct TrackSource {
 	pub sample_rate: f64,
 	pub signal: Box<dyn Source>,
-	pub info: SongInfo,
+	pub info: TrackInfo,
 }
 
 #[derive(Debug)]
@@ -29,5 +29,5 @@ pub trait Source: Send {
 pub trait SourcePlugin: Send {
 	fn name(&self) -> &'static str;
 
-	fn handle_url(&self, url: &Url) -> Option<Result<SongSource>>;
+	fn handle_url(&self, url: &Url) -> Option<Result<TrackSource>>;
 }

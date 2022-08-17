@@ -1,7 +1,7 @@
 use anyhow::Result;
 use rubato::{InterpolationParameters, Resampler as _, SincFixedOut};
 
-use crate::{SongSource, SourceError};
+use crate::{SourceError, TrackSource};
 
 pub struct Resampler {
 	pub resampler: SincFixedOut<f32>,
@@ -37,7 +37,7 @@ impl Resampler {
 		})
 	}
 
-	pub fn process(&mut self, source: &mut SongSource) -> Result<(), SourceError> {
+	pub fn process(&mut self, source: &mut TrackSource) -> Result<(), SourceError> {
 		let in_len = self.resampler.input_frames_next();
 		source.signal.next(&mut self.source_buf[..in_len])?;
 

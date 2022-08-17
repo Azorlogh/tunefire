@@ -6,7 +6,7 @@ use rusqlite::params;
 use uuid::Uuid;
 
 mod data;
-pub use data::Song;
+pub use data::Track;
 
 mod filter;
 pub use filter::Filter;
@@ -46,32 +46,32 @@ impl Client {
 		})
 	}
 
-	pub fn add_song(&mut self, source: &str, artist: &str, title: &str) -> Result<Uuid> {
+	pub fn add_track(&mut self, source: &str, artist: &str, title: &str) -> Result<Uuid> {
 		let id = Uuid::new_v4();
 		self.conn
 			.execute(
-				"INSERT INTO songs (id, source, artist, title) VALUES (?, ?, ?, ?)",
+				"INSERT INTO tracks (id, source, artist, title) VALUES (?, ?, ?, ?)",
 				&[&id.to_string(), source, artist, title],
 			)
-			.map_err(|e| anyhow!("failed to add song {}", e))?;
+			.map_err(|e| anyhow!("failed to add track {}", e))?;
 
 		Ok(id)
 	}
 
-	pub fn delete_song(&mut self, id: Uuid) -> Result<()> {
+	pub fn delete_track(&mut self, id: Uuid) -> Result<()> {
 		self.conn
-			.execute("DELETE FROM songs WHERE id = ?", &[&id.to_string()])
-			.map_err(|e| anyhow!("failed to delete song: {}", e))?;
+			.execute("DELETE FROM tracks WHERE id = ?", &[&id.to_string()])
+			.map_err(|e| anyhow!("failed to delete track: {}", e))?;
 		Ok(())
 	}
 
-	pub fn get_song(&self, id: Uuid) -> Result<Song> {
+	pub fn get_track(&self, id: Uuid) -> Result<Track> {
 		let mut stmt = self
 			.conn
-			.prepare("SELECT id, source, artist, title FROM songs WHERE id = ?")?;
-		let mut song = stmt
+			.prepare("SELECT id, source, artist, title FROM tracks WHERE id = ?")?;
+		let mut track = stmt
 			.query_row(&[&id.to_string()], |row| {
-				Ok(Song {
+				Ok(Track {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
 					artist: row.get(2)?,
@@ -79,15 +79,15 @@ impl Client {
 					tags: vec![],
 				})
 			})
-			.map_err(|e| anyhow!("failed to get song: {}", e))?;
+			.map_err(|e| anyhow!("failed to get track: {}", e))?;
 
 		let mut stmt = self.conn.prepare(
 			r#"
 			SELECT name, "value"
-			FROM song_tags
-			INNER JOIN songs ON song_tags.song_id = songs.id
-			INNER JOIN tags ON song_tags.tag_id = tags.id
-			WHERE songs.id = ?
+			FROM track_tags
+			INNER JOIN tracks ON track_tags.track_id = tracks.id
+			INNER JOIN tags ON track_tags.tag_id = tags.id
+			WHERE tracks.id = ?
 		"#,
 		)?;
 
@@ -95,10 +95,10 @@ impl Client {
 			.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
 			.unwrap();
 		for tag in tags {
-			song.tags.push(tag.unwrap());
+			track.tags.push(tag.unwrap());
 		}
 
-		Ok(song)
+		Ok(track)
 	}
 
 	fn get_tag_id(&self, name: &str) -> Result<Uuid> {
@@ -111,15 +111,15 @@ impl Client {
 		Ok(id)
 	}
 
-	pub fn set_tag(&mut self, song_id: Uuid, tag_name: &str, value: f32) -> Result<()> {
+	pub fn set_tag(&mut self, track_id: Uuid, tag_name: &str, value: f32) -> Result<()> {
 		if value == 0.0 {
 			if let Ok(tag_id) = self.get_tag_id(tag_name) {
 				self.conn.execute(
-					"DELETE FROM song_tags WHERE song_id = ? AND tag_id = ?",
-					params![&song_id.to_string(), &tag_id.to_string()],
+					"DELETE FROM track_tags WHERE track_id = ? AND tag_id = ?",
+					params![&track_id.to_string(), &tag_id.to_string()],
 				)?;
 				self.conn.execute(
-					"DELETE FROM tags WHERE id = ? AND id NOT IN (SELECT tag_id FROM song_tags)",
+					"DELETE FROM tags WHERE id = ? AND id NOT IN (SELECT tag_id FROM track_tags)",
 					[&tag_id.to_string()],
 				)?;
 			}
@@ -142,20 +142,20 @@ impl Client {
 
 		self.conn
 			.execute(
-				"REPLACE INTO song_tags (song_id, tag_id, value) VALUES (?, ?, ?)",
-				params![&song_id.to_string(), &tag_id.to_string(), &value],
+				"REPLACE INTO track_tags (track_id, tag_id, value) VALUES (?, ?, ?)",
+				params![&track_id.to_string(), &tag_id.to_string(), &value],
 			)
 			.map_err(|e| anyhow!("failed to set tag: {}", e))?;
 		Ok(())
 	}
 
-	pub fn list(&mut self) -> Result<Vec<Song>> {
+	pub fn list(&mut self) -> Result<Vec<Track>> {
 		let mut stmt = self
 			.conn
-			.prepare("SELECT id, source, artist, title FROM songs")?;
-		let songs = stmt
+			.prepare("SELECT id, source, artist, title FROM tracks")?;
+		let tracks = stmt
 			.query_map([], |row| {
-				Ok(Song {
+				Ok(Track {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
 					artist: row.get(2)?,
@@ -163,13 +163,13 @@ impl Client {
 					tags: vec![],
 				})
 			})?
-			.collect::<Result<Vec<Song>, _>>()
-			.map_err(|e| anyhow!("failed list songs: {}", e))?;
+			.collect::<Result<Vec<Track>, _>>()
+			.map_err(|e| anyhow!("failed list tracks: {}", e))?;
 
-		Ok(songs)
+		Ok(tracks)
 	}
 
-	// Create a view that contains all the songs that match the filter
+	// Create a view that contains all the tracks that match the filter
 	fn view_filtered(&mut self, filter: &Filter) -> Result<Uuid> {
 		let uuid = Uuid::new_v4();
 		let uuid = match filter {
@@ -183,10 +183,10 @@ impl Client {
 					&format!(
 						r#"
 								CREATE TEMP VIEW "{uuid}" AS
-								SELECT songs.id
-								FROM songs
-								LEFT JOIN song_tags ON song_tags.song_id = songs.id AND song_tags.tag_id = '{tag_id}'
-								WHERE coalesce(song_tags.value, 0.0) {} {threshold}
+								SELECT tracks.id
+								FROM tracks
+								LEFT JOIN track_tags ON track_tags.track_id = tracks.id AND track_tags.tag_id = '{tag_id}'
+								WHERE coalesce(track_tags.value, 0.0) {} {threshold}
 								"#,
 						if *inclusive { "<=" } else { "<" },
 					),
@@ -200,9 +200,9 @@ impl Client {
 					&format!(
 						r#"
 						CREATE TEMP VIEW "{uuid}" AS
-						SELECT songs.id
-						FROM songs
-						WHERE songs.id NOT IN (SELECT id FROM "{f_uuid}")
+						SELECT tracks.id
+						FROM tracks
+						WHERE tracks.id NOT IN (SELECT id FROM "{f_uuid}")
 						"#,
 					),
 					[],
@@ -248,8 +248,8 @@ impl Client {
 		Ok(uuid)
 	}
 
-	// Apply the filter to the list of songs.
-	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Song>> {
+	// Apply the filter to the list of tracks.
+	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Track>> {
 		println!("list filtered {:?}", filter);
 		let view_id = self.view_filtered(filter)?;
 		println!("obtained view id {:?}", view_id);
@@ -257,12 +257,12 @@ impl Client {
 			r#"
 				SELECT id, source, artist, title
 				FROM "{view_id}"
-				NATURAL JOIN songs
+				NATURAL JOIN tracks
 			"#,
 		))?;
-		let songs = stmt
+		let tracks = stmt
 			.query_map(params![], |row| {
-				Ok(Song {
+				Ok(Track {
 					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
 					source: row.get(1)?,
 					artist: row.get(2)?,
@@ -270,14 +270,14 @@ impl Client {
 					tags: vec![],
 				})
 			})?
-			.collect::<Result<Vec<Song>, _>>()
-			.map_err(|e| anyhow!("failed list songs: {}", e))?;
+			.collect::<Result<Vec<Track>, _>>()
+			.map_err(|e| anyhow!("failed list tracks: {}", e))?;
 
 		for view in self.query_views.drain(..) {
 			self.conn.execute(&format!(r#"DROP VIEW "{view}""#), [])?;
 		}
 
-		Ok(songs)
+		Ok(tracks)
 	}
 
 	// List the set of tags

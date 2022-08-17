@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 
-use crate::SongInfo;
+use crate::TrackInfo;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum State {
@@ -13,7 +13,7 @@ use State::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Playing {
-	pub song: SongInfo,
+	pub track: TrackInfo,
 	pub offset: Duration,
 	pub paused: bool,
 }
@@ -32,9 +32,9 @@ impl State {
 		}
 	}
 
-	pub fn current_song(&self) -> Option<&SongInfo> {
+	pub fn current_track(&self) -> Option<&TrackInfo> {
 		match self {
-			Playing(Playing { song, .. }) => Some(song),
+			Playing(Playing { track, .. }) => Some(track),
 			_ => None,
 		}
 	}
@@ -46,9 +46,9 @@ impl State {
 		}
 	}
 
-	pub(super) fn set_song(&mut self, song: SongInfo) {
+	pub(super) fn set_track(&mut self, track: TrackInfo) {
 		*self = Playing(Playing {
-			song,
+			track,
 			offset: Duration::ZERO,
 			paused: false,
 		});

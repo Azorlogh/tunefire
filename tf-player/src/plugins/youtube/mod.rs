@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::{
 	util::{self, http_progressive::HttpProgressive},
-	SongInfo, SongSource, Source, SourcePlugin,
+	Source, SourcePlugin, TrackInfo, TrackSource,
 };
 
 pub struct YoutubePlugin {
@@ -22,7 +22,7 @@ impl YoutubePlugin {
 		})
 	}
 
-	pub fn handle(&self, url: &Url) -> Result<SongSource> {
+	pub fn handle(&self, url: &Url) -> Result<TrackSource> {
 		let video_id: ytextract::video::Id = url
 			.query_pairs()
 			.find(|pair| pair.0 == "v")
@@ -48,8 +48,8 @@ impl YoutubePlugin {
 
 		let source = YoutubeSource::new(&stream.url())?;
 
-		Ok(SongSource {
-			info: SongInfo { duration },
+		Ok(TrackSource {
+			info: TrackInfo { duration },
 			sample_rate: 44100.0,
 			signal: Box::new(source),
 		})
@@ -61,7 +61,7 @@ impl SourcePlugin for YoutubePlugin {
 		"Youtube"
 	}
 
-	fn handle_url(&self, url: &Url) -> Option<Result<SongSource>> {
+	fn handle_url(&self, url: &Url) -> Option<Result<TrackSource>> {
 		(url.scheme() == "https" && url.host_str() == Some("www.youtube.com"))
 			.then(|| self.handle(url))
 	}

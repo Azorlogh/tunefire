@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS songs (
+CREATE TABLE IF NOT EXISTS tracks (
 	id TEXT PRIMARY KEY,
 	artist TEXT NOT NULL,
 	title TEXT NOT NULL,
@@ -10,9 +10,9 @@ CREATE TABLE IF NOT EXISTS tags (
 	name TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS song_tags (
-	song_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS track_tags (
+	track_id TEXT NOT NULL,
 	tag_id TEXT NOT NULL,
 	"value" FLOAT NOT NULL,
-	PRIMARY KEY (song_id, tag_id)
+	PRIMARY KEY (track_id, tag_id)
 );
