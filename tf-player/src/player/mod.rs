@@ -138,9 +138,7 @@ impl Player {
 		};
 
 		if !playing {
-			// for d in data {
-			// 	*d = 0.0;
-			// }
+			std::thread::sleep(Duration::from_millis(100));
 			return;
 		}
 
@@ -182,6 +180,8 @@ impl Player {
 					.unwrap();
 				resampler.i += 1;
 			}
+		} else {
+			std::thread::sleep(Duration::from_millis(100));
 		}
 	}
 }
