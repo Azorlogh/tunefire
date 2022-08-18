@@ -11,6 +11,8 @@ pub mod widget;
 
 pub mod theme;
 
+pub mod data;
+
 mod delegate;
 
 mod media_controls;

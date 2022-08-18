@@ -29,15 +29,14 @@ const TRACK_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("track_list.item.backgro
 
 mod add_track;
 mod media_bar;
+mod track_list;
 
 pub fn ui() -> impl Widget<State> {
 	let query_box = query_box();
 
 	let main_view = Flex::row()
 		.with_flex_child(
-			Scroll::new(tracks_ui().lens(State::tracks))
-				.vertical()
-				.expand_height(),
+			Scroll::new(track_list::ui()).vertical().expand_height(),
 			1.0,
 		)
 		.with_child(Maybe::new(|| track_edit(), || SizedBox::empty()).lens(State::track_edit));
@@ -76,62 +75,6 @@ pub fn ui() -> impl Widget<State> {
 			.with_child(Overlay::new()),
 		PlayerTick::default(),
 	)
-}
-
-fn tracks_ui() -> impl Widget<im::Vector<TrackListItem>> {
-	List::new(|| {
-		let row = Flex::row()
-			.with_child(play_track_button())
-			.with_default_spacer()
-			.with_flex_child(
-				Flex::column()
-					.with_child(
-						Label::new(|item: &TrackListItem, _: &_| item.track.title.to_owned())
-							.with_text_size(16.0)
-							.fix_height(24.0)
-							.expand_width(),
-					)
-					.with_child(EnvScope::new(
-						|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
-						Label::new(|item: &TrackListItem, _: &_| item.track.artist.to_owned())
-							.with_text_size(13.0)
-							.fix_height(10.0)
-							.expand_width(),
-					)),
-				1.0,
-			)
-			.with_child(
-				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_EDIT))
-					.fix_size(36.0, 36.0)
-					.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
-						ctx.submit_command(command::UI_TRACK_EDIT_OPEN.with(item.track.id))
-					}),
-			)
-			.with_child(
-				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
-					.fix_size(36.0, 36.0)
-					.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
-						ctx.submit_command(command::TRACK_DELETE.with(item.track.id))
-					}),
-			)
-			.expand_width()
-			.fix_height(64.0);
-
-		EnvScope::new(
-			|env, state| {
-				env.set(
-					TRACK_LIST_ITEM_BACKGROUND,
-					if state.selected {
-						env.get(crate::theme::BACKGROUND_HIGHLIGHT0)
-					} else {
-						Color::TRANSPARENT
-					},
-				)
-			},
-			Container::new(row).background(TRACK_LIST_ITEM_BACKGROUND),
-		)
-	})
-	.expand_width()
 }
 
 fn query_box() -> impl Widget<State> {
@@ -204,14 +147,6 @@ fn play_query_button() -> impl Widget<State> {
 		.fix_size(36.0, 36.0)
 		.on_click(|ctx: &mut EventCtx, _, _| {
 			ctx.submit_command(command::QUERY_PLAY);
-		})
-}
-
-fn play_track_button() -> impl Widget<TrackListItem> {
-	Painter::new(|ctx, _: &TrackListItem, env| draw_icon_button(ctx, env, ICON_PLAY))
-		.fix_size(36.0, 36.0)
-		.on_click(|ctx: &mut EventCtx, item: &mut TrackListItem, _| {
-			ctx.submit_command(command::TRACK_PLAY.with(item.track.id));
 		})
 }
 

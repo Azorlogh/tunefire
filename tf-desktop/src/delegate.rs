@@ -108,13 +108,7 @@ impl AppDelegate<State> for Delegate {
 				match data.query.parse::<tf_db::Filter>() {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
-							data.tracks = tracks
-								.iter()
-								.map(|s| TrackListItem {
-									track: Rc::new(s.clone()),
-									selected: false,
-								})
-								.collect();
+							data.tracks = tracks.iter().cloned().map(Rc::new).collect();
 						}
 						Err(e) => println!("error while querying {:?}", e),
 					},
@@ -126,7 +120,7 @@ impl AppDelegate<State> for Delegate {
 				let mut queue: im::Vector<Rc<Track>> = data
 					.tracks
 					.iter()
-					.filter_map(|item| self.db.get_track(item.track.id).ok())
+					.filter_map(|track| self.db.get_track(track.id).ok())
 					.map(|s| Rc::new(s))
 					.collect();
 				if let Some(track) = queue.pop_front() {
@@ -188,9 +182,7 @@ impl AppDelegate<State> for Delegate {
 			// ui
 			_ if cmd.is(command::UI_TRACK_EDIT_OPEN) => {
 				let id = cmd.get::<Uuid>(command::UI_TRACK_EDIT_OPEN).unwrap();
-				data.tracks.iter_mut().for_each(|item| {
-					item.selected = item.track.id == *id;
-				});
+				data.selected_track = Some(Rc::new(*id));
 				if let Ok(track) = self.db.get_track(*id) {
 					data.track_edit = Some(TrackEdit::new(track));
 				}
@@ -224,10 +216,7 @@ impl AppDelegate<State> for Delegate {
 				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
-						data.tracks.push_back(TrackListItem {
-							track: Rc::new(track),
-							selected: true,
-						});
+						data.tracks.push_back(Rc::new(track));
 						data.new_track_url = String::new();
 						data.new_track = None;
 					}
@@ -238,7 +227,7 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::TRACK_DELETE) => {
 				let id = cmd.get::<Uuid>(command::TRACK_DELETE).unwrap();
 				if let Ok(()) = self.db.delete_track(*id) {
-					data.tracks.retain(|item| item.track.id != *id);
+					data.tracks.retain(|track| track.id != *id);
 				}
 				druid::Handled::Yes
 			}

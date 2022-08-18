@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
-	pub tracks: im::Vector<TrackListItem>,
+	pub tracks: im::Vector<Rc<Track>>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
 	pub queue: im::Vector<Rc<Track>>,
@@ -17,18 +17,12 @@ pub struct State {
 	pub new_track_url: String,
 	pub track_edit: Option<TrackEdit>,
 	pub current_track: Option<Rc<Track>>,
+	pub selected_track: Option<Rc<Uuid>>,
 }
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let tracks: im::Vector<_> = db
-			.list()?
-			.iter()
-			.map(|s| TrackListItem {
-				track: Rc::new(s.clone()),
-				selected: false,
-			})
-			.collect();
+		let tracks: im::Vector<_> = db.list()?.iter().cloned().map(Rc::new).collect();
 
 		Ok(Self {
 			player_state: Rc::new(player::State::default()),
@@ -39,24 +33,9 @@ impl State {
 			new_track_url: String::new(),
 			track_edit: None,
 			current_track: None,
+			selected_track: None,
 		})
 	}
-
-	// pub fn playing_lens() -> druid::lens::Map<
-	// 	impl Fn(&Rc<player::State>) -> Option<Rc<player::state::Playing>>,
-	// 	impl Fn(&mut Rc<player::State>, Option<Rc<player::state::Playing>>),
-	// > {
-	// 	druid::lens::Map::new(
-	// 		|s: &Rc<player::State>| s.get_playing().map(|s| Rc::new(s.clone())),
-	// 		|s: &mut Rc<player::State>, inner: Option<Rc<player::state::Playing>>| {
-	// 			*s = Rc::new(
-	// 				inner
-	// 					.map(|s| player::State::Playing((*s).clone()))
-	// 					.unwrap_or(player::State::Idle),
-	// 			);
-	// 		},
-	// 	)
-	// }
 }
 
 #[derive(Clone, Default, Data, Lens)]
@@ -87,6 +66,5 @@ impl TrackEdit {
 
 #[derive(Clone, Data, Lens)]
 pub struct TrackListItem {
-	pub selected: bool,
 	pub track: Rc<Track>,
 }
