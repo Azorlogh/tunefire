@@ -75,14 +75,14 @@ impl YoutubeSource {
 	pub fn new(url: &Url) -> Result<Self> {
 		let media_source = HttpProgressive::new(url.as_str())?;
 
-		debug!("created the media source for youtube");
+		debug!("created media source");
 
 		let mss = MediaSourceStream::new(Box::new(media_source), Default::default());
 		let mut hint = Hint::new();
 		hint.mime_type("audio/aac");
 		let source = util::symphonia::Source::from_mss(mss, hint)?;
 
-		debug!("created symphonia source for youtube");
+		debug!("created symphonia source");
 
 		Ok(Self { source })
 	}

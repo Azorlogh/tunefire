@@ -19,3 +19,4 @@ tracing = "0.1.36"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 directories = "4.0.1"
 souvlaki = "0.5.1"
+crossbeam-channel = "0.5.6"

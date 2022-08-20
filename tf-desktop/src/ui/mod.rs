@@ -1,12 +1,11 @@
 use std::rc::Rc;
 
 use druid::{
-	im,
 	kurbo::{BezPath, Circle},
 	lens::Map,
 	widget::{
-		Button, Container, ControllerHost, CrossAxisAlignment, EnvScope, Flex, Label, List, Maybe,
-		Painter, Scroll, SizedBox, TextBox,
+		Button, Container, ControllerHost, CrossAxisAlignment, Flex, Label, List, Maybe, Painter,
+		Scroll, SizedBox, TextBox,
 	},
 	Affine, Color, Env, EventCtx, Key, PaintCtx, RenderContext, TextAlignment, Vec2, Widget,
 	WidgetExt,
@@ -16,12 +15,10 @@ use tf_player::player;
 use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	state::{TrackEdit, TrackListItem},
+	controller::playback::PlaybackController,
+	state::TrackEdit,
 	theme,
-	widget::{
-		common::stack::Stack, controllers::Enter, overlay::Overlay, player_tick::PlayerTick,
-		tag_edit::TagEdit,
-	},
+	widget::{common::stack::Stack, controllers::Enter, overlay::Overlay, tag_edit::TagEdit},
 	State,
 };
 
@@ -66,15 +63,17 @@ pub fn ui() -> impl Widget<State> {
 			},
 		)),
 	);
-	ControllerHost::new(
-		Stack::new()
-			.with_child(root.padding(10.0).expand_width())
-			.with_child(
-				Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
-			)
-			.with_child(Overlay::new()),
-		PlayerTick::default(),
-	)
+
+	Stack::new()
+		.with_child(
+			root.padding(10.0).expand_width().controller(
+				PlaybackController::new().expect("Couldn't create playback controller"),
+			),
+		)
+		.with_child(
+			Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
+		)
+		.with_child(Overlay::new())
 }
 
 fn query_box() -> impl Widget<State> {

@@ -9,7 +9,8 @@ use tf_player::player::state::Playing;
 
 use super::{draw_icon_button, ICON_NEXT, ICON_PAUSE, ICON_PLAY, ICON_PREV};
 use crate::{
-	command, theme,
+	controller::playback,
+	theme,
 	widget::{overlay, player_bar::PlayerBar},
 	State,
 };
@@ -99,7 +100,7 @@ fn play_pause_button() -> impl Widget<Rc<Playing>> {
 	})
 	.fix_size(36.0, 36.0)
 	.on_click(|ctx: &mut EventCtx, _, _| {
-		ctx.submit_command(command::PLAYER_PLAY_PAUSE);
+		ctx.submit_command(playback::PLAYER_PLAY_PAUSE);
 	})
 }
 
@@ -107,7 +108,7 @@ fn prev_button() -> impl Widget<Rc<Playing>> {
 	Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_PREV))
 		.fix_size(36.0, 36.0)
 		.on_click(|ctx: &mut EventCtx, _, _| {
-			ctx.submit_command(command::PLAYER_PREV);
+			ctx.submit_command(playback::PLAYER_PREV);
 		})
 }
 
@@ -115,7 +116,7 @@ fn next_button() -> impl Widget<Rc<Playing>> {
 	Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_NEXT))
 		.fix_size(36.0, 36.0)
 		.on_click(|ctx: &mut EventCtx, _, _| {
-			ctx.submit_command(command::PLAYER_NEXT);
+			ctx.submit_command(playback::PLAYER_NEXT);
 		})
 }
 

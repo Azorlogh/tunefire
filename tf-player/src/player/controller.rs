@@ -10,14 +10,13 @@ use anyhow::{anyhow, Result};
 use parking_lot::RwLock;
 use url::Url;
 
-use super::Event;
+use super::Command;
 use crate::{LocalPlugin, SoundcloudPlugin, SourcePlugin, TrackSource, YoutubePlugin};
 
 pub struct Controller {
-	sender: crossbeam_channel::Sender<Event>,
+	sender: crossbeam_channel::Sender<Command>,
 	state: Arc<RwLock<super::State>>,
 	plugins: Vec<Box<dyn SourcePlugin>>,
-	// _stream: cpal::Stream,
 	nb_queued: Arc<AtomicUsize>,
 }
 
@@ -30,8 +29,7 @@ impl std::fmt::Debug for Controller {
 impl Controller {
 	pub fn new(
 		state: Arc<RwLock<super::State>>,
-		sender: crossbeam_channel::Sender<Event>,
-		// stream: cpal::Stream,
+		sender: crossbeam_channel::Sender<Command>,
 		nb_queued: Arc<AtomicUsize>,
 	) -> Result<Self> {
 		Ok(Self {
@@ -42,7 +40,6 @@ impl Controller {
 				Box::new(SoundcloudPlugin::new()?),
 				Box::new(YoutubePlugin::new()?),
 			],
-			// _stream: stream,
 			nb_queued,
 		})
 	}
@@ -63,9 +60,13 @@ impl Controller {
 		Err(anyhow!("no plugin could find this track"))
 	}
 
+	pub fn clear(&self) {
+		self.sender.send(Command::Clear).unwrap();
+	}
+
 	pub fn queue_track(&mut self, url: Url) -> Result<()> {
 		let source = self.create_source(&url)?;
-		if let Err(e) = self.sender.send(Event::QueueTrack(source)) {
+		if let Err(e) = self.sender.send(Command::QueueTrack(source)) {
 			panic!("{:?}", e);
 		}
 		Ok(())
@@ -73,14 +74,14 @@ impl Controller {
 
 	pub fn play(&mut self) -> Result<()> {
 		self.sender
-			.send(Event::Play)
+			.send(Command::Play)
 			.map_err(|_| anyhow!("failed to play"))?;
 		Ok(())
 	}
 
 	pub fn pause(&mut self) -> Result<()> {
 		self.sender
-			.send(Event::Pause)
+			.send(Command::Pause)
 			.map_err(|_| anyhow!("failed to pause"))?;
 		Ok(())
 	}
@@ -100,7 +101,7 @@ impl Controller {
 	}
 
 	pub fn seek(&mut self, position: Duration) -> Result<()> {
-		self.sender.send(Event::Seek(position)).unwrap();
+		self.sender.send(Command::Seek(position)).unwrap();
 		Ok(())
 	}
 

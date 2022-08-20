@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use druid::{
-	im, lens,
-	widget::{Container, EnvScope, Flex, Label, List, Painter, SizedBox},
+	lens,
+	widget::{Container, EnvScope, Flex, Label, List, Painter},
 	Color, Data, EventCtx, Lens, Widget, WidgetExt,
 };
 use tf_db::Track;
@@ -11,7 +11,12 @@ use uuid::Uuid;
 use super::{
 	draw_icon_button, ICON_DELETE, ICON_EDIT, ICON_PAUSE, ICON_PLAY, TRACK_LIST_ITEM_BACKGROUND,
 };
-use crate::{command, data::ctx::Ctx, theme, State};
+use crate::{
+	command,
+	controller::playback::{PLAYER_CLEAR, PLAYER_ENQUEUE, PLAYER_PLAY_PAUSE},
+	data::ctx::Ctx,
+	theme, State,
+};
 
 #[derive(Clone, Data, Lens)]
 pub struct TrackCtx {
@@ -103,7 +108,13 @@ fn play_track_button() -> impl Widget<Ctx<TrackCtx, Rc<Track>>> {
 	.fix_size(36.0, 36.0)
 	.on_click(
 		|ctx: &mut EventCtx, data: &mut Ctx<TrackCtx, Rc<Track>>, _| {
-			ctx.submit_command(command::TRACK_PLAY.with(data.data.id));
+			println!("{:?}", data.ctx.playing);
+			if data.ctx.playing.as_deref() == Some(&data.data.id) {
+				ctx.submit_command(PLAYER_PLAY_PAUSE);
+			} else {
+				ctx.submit_command(PLAYER_CLEAR);
+				ctx.submit_command(PLAYER_ENQUEUE.with(data.data.clone()));
+			}
 		},
 	)
 }

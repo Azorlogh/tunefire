@@ -7,7 +7,6 @@ use tracing::debug;
 
 pub struct AudioSink {
 	consumer: Consumer<f32>,
-	filled_with_zeros: bool,
 }
 
 impl AudioSink {
@@ -25,10 +24,7 @@ impl AudioSink {
 
 		let (producer, consumer) = rtrb::RingBuffer::new(44100);
 
-		let mut sink = AudioSink {
-			consumer,
-			filled_with_zeros: false,
-		};
+		let mut sink = AudioSink { consumer };
 
 		let stream = device.build_output_stream(
 			&config.clone(),
@@ -48,18 +44,12 @@ impl AudioSink {
 	}
 
 	pub fn process(&mut self, data: &mut [f32]) {
-		if self.consumer.slots() < data.len() {
-			if !self.filled_with_zeros {
-				data.fill(0.0);
-				self.filled_with_zeros = true;
-			}
-			return;
-		}
-		let chunk = self.consumer.read_chunk(data.len()).unwrap(); // available >= data.len()
+		let available = self.consumer.slots().min(data.len());
+		let chunk = self.consumer.read_chunk(available).unwrap();
 		let (first, second) = chunk.as_slices();
 		data[..first.len()].copy_from_slice(first);
-		data[first.len()..].copy_from_slice(second);
+		data[first.len()..available].copy_from_slice(second);
 		chunk.commit_all();
-		self.filled_with_zeros = false;
+		data[available..].fill(0.0);
 	}
 }

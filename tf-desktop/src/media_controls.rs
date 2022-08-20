@@ -11,7 +11,7 @@ pub struct MediaControls {
 }
 
 impl MediaControls {
-	pub fn new(#[allow(unused)] window_handle: druid::WindowHandle) -> Result<Self> {
+	pub fn new(#[allow(unused)] window_handle: &druid::WindowHandle) -> Result<Self> {
 		#[cfg(not(target_os = "windows"))]
 		let hwnd = None;
 		#[cfg(target_os = "windows")]

@@ -1,10 +1,6 @@
 use std::fmt;
 
-use druid::{
-	lens::{Field, Map},
-	widget::ListIter,
-	Data, Lens, LensExt,
-};
+use druid::{lens::Field, widget::ListIter, Data, Lens, LensExt};
 
 // use crate::data::Promise;
 

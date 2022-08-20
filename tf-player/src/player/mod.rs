@@ -9,6 +9,7 @@ use std::{
 };
 
 use cpal::{traits::StreamTrait, StreamConfig};
+use crossbeam_channel::{Receiver, Sender};
 use parking_lot::RwLock;
 use tracing::{debug, error};
 
@@ -24,16 +25,21 @@ use resampler::Resampler;
 mod controller;
 pub use controller::Controller;
 
-pub enum Event {
+pub enum Command {
+	Clear,
 	QueueTrack(TrackSource),
 	Play,
 	Pause,
-	Stop,
 	Seek(Duration),
 }
 
+pub enum Event {
+	StateChanged(State),
+	TrackEnd,
+}
+
 pub struct Player {
-	receiver: crossbeam_channel::Receiver<Event>,
+	receiver: crossbeam_channel::Receiver<Command>,
 	config: StreamConfig,
 	state: Arc<RwLock<State>>,
 	source_queue: VecDeque<TrackSource>,
@@ -42,15 +48,19 @@ pub struct Player {
 	resampler: Option<Resampler>,
 	audio_sink: rtrb::Producer<f32>,
 	stream: cpal::Stream,
+	event_sender: Sender<Event>,
+	last_report: Duration,
 }
 
 impl Player {
-	pub fn new() -> anyhow::Result<Controller> {
+	pub fn spawn() -> anyhow::Result<(Controller, Receiver<Event>)> {
 		let (to_player, from_controller) = crossbeam_channel::unbounded();
 
 		let player_state = Arc::new(RwLock::new(State::Idle));
 
 		let nb_queued = Arc::new(AtomicUsize::new(0));
+
+		let (event_sender, event_receiver) = crossbeam_channel::unbounded();
 
 		let decoder_player_state = player_state.clone();
 		let decoder_nb_queued = nb_queued.clone();
@@ -69,6 +79,8 @@ impl Player {
 					resampler: None,
 					audio_sink,
 					stream,
+					event_sender,
+					last_report: Duration::from_secs(0),
 				};
 				loop {
 					player.process();
@@ -76,30 +88,36 @@ impl Player {
 			})
 			.unwrap();
 
-		Controller::new(player_state, to_player, nb_queued)
+		Ok((
+			Controller::new(player_state, to_player, nb_queued)?,
+			event_receiver,
+		))
 	}
 
 	pub fn process_events(&mut self) {
 		while let Ok(event) = self.receiver.try_recv() {
 			match event {
-				Event::QueueTrack(source) => {
+				Command::Clear => {
+					self.source_queue.clear();
+					self.nb_queued.store(0, atomic::Ordering::Relaxed);
+					self.source = None;
+					self.resampler = None;
+					*self.state.write() = State::Idle;
+				}
+				Command::QueueTrack(source) => {
 					self.source_queue.push_back(source);
 					self.nb_queued
 						.store(self.source_queue.len(), atomic::Ordering::Relaxed);
 				}
-				Event::Play => {
+				Command::Play => {
 					self.state.write().play().ok();
 					self.stream.play().unwrap();
 				}
-				Event::Pause => {
+				Command::Pause => {
 					self.state.write().pause().ok();
 					self.stream.pause().unwrap();
 				}
-				Event::Stop => {
-					self.stream.pause().unwrap();
-					*self.state.write() = State::Idle;
-				}
-				Event::Seek(position) => {
+				Command::Seek(position) => {
 					self.state.write().seek(position).unwrap();
 					match self.source.as_mut().map(|s| s.signal.seek(position)) {
 						Some(Err(e)) => error!("{e:?}"),
@@ -132,15 +150,17 @@ impl Player {
 
 		self.next_source();
 
-		let playing = match *self.state.read() {
-			State::Playing(state::Playing { paused, .. }) => !paused,
-			_ => false,
+		let offset = match *self.state.read() {
+			State::Playing(state::Playing {
+				paused: false,
+				offset,
+				..
+			}) => offset,
+			_ => {
+				std::thread::sleep(Duration::from_millis(100));
+				return;
+			}
 		};
-
-		if !playing {
-			std::thread::sleep(Duration::from_millis(100));
-			return;
-		}
 
 		let resampler = self.resampler.as_mut().unwrap();
 		let source = self.source.as_mut().unwrap();
@@ -148,6 +168,13 @@ impl Player {
 		let missing_data = self.audio_sink.slots();
 
 		if missing_data > 512 {
+			if self.last_report.as_millis().abs_diff(offset.as_millis()) > 1000 {
+				self.event_sender
+					.send(Event::StateChanged(self.state.read().clone()))
+					.unwrap();
+				self.last_report = offset;
+			}
+
 			for _ in 0..(missing_data / 2) {
 				if resampler.i >= resampler.out_buf[0].len() {
 					match resampler.process(source) {

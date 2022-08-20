@@ -8,7 +8,7 @@ use druid::{
 };
 use tf_player::player;
 
-use crate::{command, theme};
+use crate::{controller::playback::PLAYER_SEEK, theme};
 
 #[derive(Default)]
 pub struct PlayerBar {
@@ -35,7 +35,7 @@ impl Widget<Data> for PlayerBar {
 			Event::MouseUp(evt) => {
 				if ctx.is_active() && !ctx.is_disabled() {
 					let position = data.track.duration.mul_f64(evt.pos.x / ctx.size().width);
-					ctx.submit_command(command::PLAYER_SEEK.with(position));
+					ctx.submit_command(PLAYER_SEEK.with(position));
 					ctx.request_paint();
 				}
 				ctx.set_active(false);
