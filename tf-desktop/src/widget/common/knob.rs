@@ -1,11 +1,14 @@
 use std::f64::consts::TAU;
 
 use druid::{
-	kurbo::{self, BezPath, Shape, Size},
+	kurbo::{BezPath, Size},
 	piet::RenderContext,
 	widget::prelude::*,
-	Point, Vec2,
+	Affine, Color, Point,
 };
+use palette::{FromColor, Gradient, IntoColor, Oklch, Srgb};
+
+pub const STEPS: usize = 7;
 
 pub struct Knob {
 	initial_data: f32,
@@ -21,6 +24,12 @@ impl Knob {
 			click: Point::ORIGIN,
 		}
 	}
+}
+
+fn quantize(x: f32) -> f32 {
+	((x * STEPS as f32).floor() / STEPS as f32)
+		.min(1.0)
+		.max(0.0)
 }
 
 const SPEED: f32 = 10e-3;
@@ -40,18 +49,15 @@ impl Widget<f32> for Knob {
 			Event::MouseMove(evt) => {
 				if ctx.is_active() {
 					let off = evt.pos - self.click;
-					self.value_preview = (self.initial_data + (off.x - off.y) as f32 * SPEED)
-						.min(1.0)
-						.max(0.0);
+					self.value_preview =
+						quantize(self.initial_data + (off.x - off.y) as f32 * SPEED);
 					ctx.request_paint();
 				}
 			}
 			Event::MouseUp(evt) => {
 				if ctx.is_active() && !ctx.is_disabled() {
 					let off = evt.pos - self.click;
-					*data = (self.initial_data + (off.x - off.y) as f32 * SPEED)
-						.min(1.0)
-						.max(0.0);
+					*data = quantize(self.initial_data + (off.x - off.y) as f32 * SPEED);
 					ctx.request_paint();
 				}
 				ctx.set_active(false);
@@ -86,24 +92,52 @@ impl Widget<f32> for Knob {
 		let center = (size / 2.0).to_vec2().to_point();
 		let radius = size.width / 2.0 * 0.7;
 
-		let arc_path: BezPath = kurbo::Arc {
-			center,
-			radii: Vec2::new(radius, radius),
-			start_angle: 0.0,
-			sweep_angle: if ctx.is_active() {
-				self.value_preview as f64 * TAU
-			} else {
-				*data as f64 * TAU
-			},
-			x_rotation: -TAU / 4.0,
+		let value = if ctx.is_active() {
+			self.value_preview as f64
+		} else {
+			*data as f64
+		};
+
+		let color = |code: usize| {
+			let color = palette::Srgb::new(
+				(code >> 16) as u8 as f64 / 255.0,
+				(code >> 8) as u8 as f64 / 255.0,
+				code as u8 as f64 / 255.0,
+			);
+			// color.into_linear()
+			Oklch::from_color(color)
+		};
+
+		let g = Gradient::new([color(0x98c379), color(0x61afef)]);
+		// let g = Gradient::new([color(0xDC0E0E), color(0xFFEB33)]);
+
+		for i in 0..STEPS {
+			let v0 = i as f64 / STEPS as f64;
+			let v1 = (i + 1) as f64 / STEPS as f64;
+			if value < v1 {
+				break;
+			}
+			let ang0 = v0 * TAU;
+			let ang1 = v1 * TAU;
+			let mut path = BezPath::new();
+			path.line_to(Point::new(ang0.cos() * radius, ang0.sin() * radius));
+			path.line_to(Point::new(ang1.cos() * radius, ang1.sin() * radius));
+			path.line_to(Point::ZERO);
+			path.close_path();
+			path.apply_affine(Affine::translate(center.to_vec2()));
+			let mut pos = i as f64 / (STEPS - 1) as f64;
+			pos = (pos * TAU / 4.0).sin().powf(2.0);
+			let color: Srgb<f64> = g.get(pos).into_color();
+			ctx.fill(path, &Color::rgb(color.red, color.green, color.blue));
 		}
-		.into_path(0.1);
-
-		let mut wheel = arc_path.clone();
-		wheel.line_to(center);
-		wheel.line_to(center - Vec2::new(0.0, radius));
-
-		ctx.fill(wheel, &env.get(crate::theme::ACCENT));
-		ctx.stroke(arc_path, &env.get(crate::theme::ACCENT_DIM), 2.0);
+		let mut path = BezPath::new();
+		for i in 0..=STEPS {
+			let ang = i as f64 / STEPS as f64 * TAU;
+			path.line_to(Point::new(ang.cos() * radius, ang.sin() * radius));
+			path.move_to(Point::ZERO);
+		}
+		path.close_path();
+		path.apply_affine(Affine::translate(center.to_vec2()));
+		ctx.stroke(path, &env.get(crate::theme::BACKGROUND_HIGHLIGHT0), 1.0);
 	}
 }
