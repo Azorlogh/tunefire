@@ -117,8 +117,8 @@ fn track_edit() -> impl Widget<TrackEdit> {
 			)
 			.with_default_spacer()
 			.with_child(List::new(|| TagEdit::new()).lens(TrackEdit::tags))
-			.with_child(Button::new("+").on_click(|ctx, data: &mut TrackEdit, _| {
-				ctx.submit_command(command::TAG_ADD.with(*data.id))
+			.with_child(Button::new("+").on_click(|_, data: &mut TrackEdit, _| {
+				data.tags.push_back(("".to_owned(), 0.5));
 			}))
 			.with_flex_spacer(1.0)
 			.with_child(Button::new("CLOSE").on_click(|ctx, _: &mut TrackEdit, _| {

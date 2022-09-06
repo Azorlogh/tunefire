@@ -1,10 +1,7 @@
-use druid::{
-	text::ParseFormatter, widget::TextBox, BoxConstraints, Point, Size, Widget, WidgetExt,
-	WidgetPod,
-};
+use druid::{widget::TextBox, BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
 
 use super::common::knob::Knob;
-use crate::{command, theme};
+use crate::theme;
 
 type Data = (String, f32);
 
@@ -16,12 +13,7 @@ pub struct TagEdit {
 impl TagEdit {
 	pub fn new() -> Self {
 		Self {
-			text_box: WidgetPod::new(
-				TextBox::new()
-					.with_formatter(ParseFormatter::new())
-					.update_data_while_editing(false)
-					.boxed(),
-			),
+			text_box: WidgetPod::new(TextBox::new().boxed()),
 			knob: WidgetPod::new(
 				Knob::new()
 					.env_scope(|env, _| {
@@ -41,17 +33,8 @@ impl Widget<Data> for TagEdit {
 		data: &mut Data,
 		env: &druid::Env,
 	) {
-		let initial = data.clone();
-
 		self.text_box.event(ctx, event, &mut data.0, env);
 		self.knob.event(ctx, event, &mut data.1, env);
-		if data.0 != initial.0 {
-			ctx.submit_command(command::TAG_RENAME.with((initial.0, data.0.clone())));
-		}
-
-		if data.1 != initial.1 {
-			ctx.submit_command(command::TAG_TWEAK.with((data.0.clone(), data.1)));
-		}
 	}
 
 	fn lifecycle(

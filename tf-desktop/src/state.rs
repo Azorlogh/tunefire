@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 use anyhow::Result;
 use druid::{im, Data, Lens};
@@ -61,6 +61,14 @@ impl TrackEdit {
 			source: track.source,
 			tags: im::Vector::from_iter(track.tags.clone()),
 		}
+	}
+
+	pub fn get_tags(&self) -> HashMap<String, f32> {
+		self.tags
+			.iter()
+			.filter(|t| !t.0.is_empty())
+			.cloned()
+			.collect()
 	}
 }
 
