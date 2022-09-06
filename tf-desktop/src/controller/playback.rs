@@ -152,6 +152,19 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 					self.play_pause(data);
 					druid::Handled::Yes
 				}
+				_ if cmd.is(PLAYER_NEXT) => {
+					if self.player.nb_queued() == 0 {
+						if let Some(track) = data.queue.pop_front() {
+							self.player
+								.queue_track(Url::parse(&track.source).unwrap())
+								.unwrap();
+							data.current_track = Some(track);
+							self.player.skip().unwrap();
+							self.update_media_controls(data);
+						}
+					}
+					druid::Handled::Yes
+				}
 				_ if cmd.is(PLAYER_SEEK) => {
 					let pos = cmd.get_unchecked::<Duration>(PLAYER_SEEK);
 					self.player.seek(*pos).unwrap();

@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::{
 	command,
+	controller::playback,
 	state::{NewTrack, TrackEdit},
 	State,
 };
@@ -40,7 +41,7 @@ impl AppDelegate<State> for Delegate {
 
 	fn command(
 		&mut self,
-		_ctx: &mut druid::DelegateCtx,
+		ctx: &mut druid::DelegateCtx,
 		_target: druid::Target,
 		cmd: &druid::Command,
 		data: &mut State,
@@ -53,6 +54,22 @@ impl AppDelegate<State> for Delegate {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
 							data.tracks = tracks.iter().cloned().map(Rc::new).collect();
+						}
+						Err(e) => println!("error while querying {:?}", e),
+					},
+					Err(e) => println!("invalid query {e:?}"),
+				}
+				druid::Handled::Yes
+			}
+			_ if cmd.is(command::QUERY_PLAY) => {
+				match data.query.parse::<tf_db::Filter>() {
+					Ok(filter) => match self.db.list_filtered(&filter) {
+						Ok(tracks) => {
+							ctx.submit_command(playback::PLAYER_CLEAR);
+							data.queue = tracks.iter().cloned().map(Rc::new).collect();
+							ctx.submit_command(
+								playback::PLAYER_ENQUEUE.with(data.queue.pop_front().unwrap()),
+							);
 						}
 						Err(e) => println!("error while querying {:?}", e),
 					},

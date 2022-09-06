@@ -1,3 +1,4 @@
+use core::fmt;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -12,6 +13,15 @@ pub struct TrackSource {
 	pub sample_rate: f64,
 	pub signal: Box<dyn Source>,
 	pub info: TrackInfo,
+}
+
+impl fmt::Debug for TrackSource {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("TrackSource")
+			.field("sample_rate", &self.sample_rate)
+			.field("info", &self.info)
+			.finish()
+	}
 }
 
 #[derive(Debug)]

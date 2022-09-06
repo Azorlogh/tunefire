@@ -25,12 +25,14 @@ use resampler::Resampler;
 mod controller;
 pub use controller::Controller;
 
+#[derive(Debug)]
 pub enum Command {
 	Clear,
 	QueueTrack(TrackSource),
 	Play,
 	Pause,
 	Seek(Duration),
+	Skip,
 }
 
 pub enum Event {
@@ -95,8 +97,8 @@ impl Player {
 	}
 
 	pub fn process_events(&mut self) {
-		while let Ok(event) = self.receiver.try_recv() {
-			match event {
+		while let Ok(command) = self.receiver.try_recv() {
+			match command {
 				Command::Clear => {
 					self.source_queue.clear();
 					self.nb_queued.store(0, atomic::Ordering::Relaxed);
@@ -112,10 +114,16 @@ impl Player {
 				Command::Play => {
 					self.state.write().play().ok();
 					self.stream.play().unwrap();
+					self.event_sender
+						.send(Event::StateChanged(self.state.read().clone()))
+						.unwrap();
 				}
 				Command::Pause => {
 					self.state.write().pause().ok();
 					self.stream.pause().unwrap();
+					self.event_sender
+						.send(Event::StateChanged(self.state.read().clone()))
+						.unwrap();
 				}
 				Command::Seek(position) => {
 					self.state.write().seek(position).unwrap();
@@ -123,6 +131,10 @@ impl Player {
 						Some(Err(e)) => error!("{e:?}"),
 						_ => {}
 					}
+				}
+				Command::Skip => {
+					*self.state.write() = State::Idle;
+					self.next_source();
 				}
 			}
 		}

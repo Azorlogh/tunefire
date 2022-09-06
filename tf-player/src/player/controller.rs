@@ -105,6 +105,11 @@ impl Controller {
 		Ok(())
 	}
 
+	pub fn skip(&mut self) -> Result<()> {
+		self.sender.send(Command::Skip).unwrap();
+		Ok(())
+	}
+
 	pub fn state(&self) -> &RwLock<super::State> {
 		&self.state
 	}

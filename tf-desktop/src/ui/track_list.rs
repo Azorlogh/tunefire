@@ -108,7 +108,6 @@ fn play_track_button() -> impl Widget<Ctx<TrackCtx, Rc<Track>>> {
 	.fix_size(36.0, 36.0)
 	.on_click(
 		|ctx: &mut EventCtx, data: &mut Ctx<TrackCtx, Rc<Track>>, _| {
-			println!("{:?}", data.ctx.playing);
 			if data.ctx.playing.as_deref() == Some(&data.data.id) {
 				ctx.submit_command(PLAYER_PLAY_PAUSE);
 			} else {
