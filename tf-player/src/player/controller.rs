@@ -64,7 +64,7 @@ impl Controller {
 		self.sender.send(Command::Clear).unwrap();
 	}
 
-	pub fn queue_track(&mut self, url: Url) -> Result<()> {
+	pub fn queue_track(&self, url: Url) -> Result<()> {
 		let source = self.create_source(&url)?;
 		if let Err(e) = self.sender.send(Command::QueueTrack(source)) {
 			panic!("{:?}", e);
@@ -72,21 +72,21 @@ impl Controller {
 		Ok(())
 	}
 
-	pub fn play(&mut self) -> Result<()> {
+	pub fn play(&self) -> Result<()> {
 		self.sender
 			.send(Command::Play)
 			.map_err(|_| anyhow!("failed to play"))?;
 		Ok(())
 	}
 
-	pub fn pause(&mut self) -> Result<()> {
+	pub fn pause(&self) -> Result<()> {
 		self.sender
 			.send(Command::Pause)
 			.map_err(|_| anyhow!("failed to pause"))?;
 		Ok(())
 	}
 
-	pub fn play_pause(&mut self) -> Result<()> {
+	pub fn play_pause(&self) -> Result<()> {
 		if self
 			.state
 			.read()
@@ -100,13 +100,18 @@ impl Controller {
 		}
 	}
 
-	pub fn seek(&mut self, position: Duration) -> Result<()> {
+	pub fn seek(&self, position: Duration) -> Result<()> {
 		self.sender.send(Command::Seek(position)).unwrap();
 		Ok(())
 	}
 
-	pub fn skip(&mut self) -> Result<()> {
+	pub fn skip(&self) -> Result<()> {
 		self.sender.send(Command::Skip).unwrap();
+		Ok(())
+	}
+
+	pub fn set_volume(&self, volume: f32) -> Result<()> {
+		self.sender.send(Command::SetVolume(volume)).unwrap();
 		Ok(())
 	}
 

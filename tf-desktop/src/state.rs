@@ -19,6 +19,7 @@ pub struct State {
 	pub track_edit: Option<TrackEdit>,
 	pub current_track: Option<Rc<Track>>,
 	pub selected_track: Option<Rc<Uuid>>,
+	pub volume: f64,
 }
 
 impl State {
@@ -36,6 +37,7 @@ impl State {
 			track_edit: None,
 			current_track: None,
 			selected_track: None,
+			volume: 1.0,
 		})
 	}
 }

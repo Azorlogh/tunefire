@@ -1,6 +1,6 @@
 use druid::{
-	keyboard_types::Key, BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx,
-	PaintCtx, Point, Rect, Selector, Size, UpdateCtx, Widget, WidgetPod,
+	BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Point,
+	Rect, Selector, Size, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::state::State;

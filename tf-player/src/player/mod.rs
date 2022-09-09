@@ -33,6 +33,7 @@ pub enum Command {
 	Pause,
 	Seek(Duration),
 	Skip,
+	SetVolume(f32),
 }
 
 pub enum Event {
@@ -52,6 +53,7 @@ pub struct Player {
 	stream: cpal::Stream,
 	event_sender: Sender<Event>,
 	last_report: Duration,
+	volume: f32,
 }
 
 impl Player {
@@ -83,6 +85,7 @@ impl Player {
 					stream,
 					event_sender,
 					last_report: Duration::from_secs(0),
+					volume: 1.0,
 				};
 				loop {
 					player.process();
@@ -135,6 +138,9 @@ impl Player {
 				Command::Skip => {
 					*self.state.write() = State::Idle;
 					self.next_source();
+				}
+				Command::SetVolume(v) => {
+					self.volume = v;
 				}
 			}
 		}
@@ -213,10 +219,10 @@ impl Player {
 					}
 				}
 				self.audio_sink
-					.push(resampler.out_buf[0][resampler.i])
+					.push(resampler.out_buf[0][resampler.i] * self.volume)
 					.unwrap();
 				self.audio_sink
-					.push(resampler.out_buf[1][resampler.i])
+					.push(resampler.out_buf[1][resampler.i] * self.volume)
 					.unwrap();
 				resampler.i += 1;
 			}

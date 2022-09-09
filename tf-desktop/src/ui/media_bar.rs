@@ -1,7 +1,7 @@
 use std::{rc::Rc, time::Duration};
 
 use druid::{
-	widget::{Button, Container, Flex, Label, Maybe, Painter, SizedBox},
+	widget::{Button, Container, Flex, Label, Maybe, Painter, SizedBox, Slider},
 	BoxConstraints, Data, EventCtx, Lens, Size, Widget, WidgetExt,
 };
 use tf_db::Track;
@@ -11,13 +11,14 @@ use super::{draw_icon_button, ICON_NEXT, ICON_PAUSE, ICON_PLAY, ICON_PREV};
 use crate::{
 	controller::playback,
 	theme,
-	widget::{overlay, player_bar::PlayerBar},
+	widget::{controllers::OnDebounce, overlay, player_bar::PlayerBar},
 };
 
 #[derive(Clone, Data, Lens)]
 pub struct MediaBarState {
 	pub playing: Rc<Playing>,
 	pub current_track: Option<Rc<Track>>,
+	pub volume: f64,
 }
 
 pub fn ui() -> impl Widget<MediaBarState> {
@@ -30,6 +31,17 @@ pub fn ui() -> impl Widget<MediaBarState> {
 
 	let right_buttons = Flex::row()
 		.with_flex_spacer(1.0)
+		.with_child(
+			Slider::new()
+				.controller(OnDebounce::trailing(
+					Duration::from_millis(250),
+					|ctx, data, _| {
+						ctx.submit_command(playback::PLAYER_SET_VOLUME.with(*data as f32));
+					},
+				))
+				.fix_width(100.0)
+				.lens(MediaBarState::volume),
+		)
 		.with_child(Button::new("☰").on_click(
 			move |ctx: &mut EventCtx, _: &mut MediaBarState, _| {
 				ctx.submit_command(overlay::SHOW_MIDDLE.with((

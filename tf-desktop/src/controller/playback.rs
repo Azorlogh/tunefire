@@ -19,6 +19,7 @@ pub const PLAYER_SEEK: Selector<Duration> = Selector::new("player.seek");
 pub const PLAYER_PREV: Selector = Selector::new("player.prev");
 pub const PLAYER_NEXT: Selector = Selector::new("player.next");
 pub const PLAYER_EVENT: Selector<player::Event> = Selector::new("player.event");
+pub const PLAYER_SET_VOLUME: Selector<f32> = Selector::new("player.set-volume");
 
 pub struct PlaybackController {
 	player: player::Controller,
@@ -185,6 +186,11 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 				_ if cmd.is(PLAYER_SEEK) => {
 					let pos = cmd.get_unchecked::<Duration>(PLAYER_SEEK);
 					self.player.seek(*pos).unwrap();
+					druid::Handled::Yes
+				}
+				_ if cmd.is(PLAYER_SET_VOLUME) => {
+					let volume = cmd.get_unchecked::<f32>(PLAYER_SET_VOLUME);
+					self.player.set_volume(*volume).unwrap();
 					druid::Handled::Yes
 				}
 				_ => druid::Handled::No,

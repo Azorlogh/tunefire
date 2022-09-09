@@ -53,14 +53,15 @@ pub fn ui() -> impl Widget<State> {
 				s.player_state.get_playing().map(|p| MediaBarState {
 					playing: Rc::new(p.clone()),
 					current_track: s.current_track.clone(),
+					volume: s.volume,
 				})
 			},
 			|s: &mut State, inner: Option<MediaBarState>| {
-				s.player_state = Rc::new(
-					inner
-						.map(|s| player::State::Playing((*s.playing).clone()))
-						.unwrap_or(player::State::Idle),
-				);
+				if let Some(inner) = inner {
+					s.volume = inner.volume;
+					s.player_state =
+						Rc::new(player::State::Playing((*inner.playing).clone()).clone());
+				}
 			},
 		)),
 	);
