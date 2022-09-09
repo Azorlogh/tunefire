@@ -195,6 +195,7 @@ impl Player {
 							self.source = None;
 							*self.state.write() = State::Idle;
 							self.next_source();
+							self.event_sender.send(Event::TrackEnd).unwrap();
 							return;
 						}
 						Err(e) => {

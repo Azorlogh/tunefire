@@ -121,19 +121,23 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 								.unwrap_or_default() + Duration::from_secs(
 								self.player.nb_queued() as u64 * 10000000,
 							);
-							if until_empty < Duration::from_secs(1) {
-								if let Some(track) = data.queue.pop_front() {
+							if until_empty < Duration::from_secs(3) {
+								if let Some(track) = data.queue.front() {
 									self.player
 										.queue_track(Url::parse(&track.source).unwrap())
 										.unwrap();
-									data.current_track = Some(track);
-									self.update_media_controls(data);
-								} else {
-									data.current_track = None;
-									self.update_media_controls(data);
 								}
 							}
 							data.player_state = Rc::new(ps.clone());
+						}
+						player::Event::TrackEnd => {
+							if let Some(track) = data.queue.pop_front() {
+								data.current_track = Some(track);
+								self.update_media_controls(data);
+							} else {
+								data.current_track = None;
+								self.update_media_controls(data);
+							}
 						}
 						_ => {}
 					}
