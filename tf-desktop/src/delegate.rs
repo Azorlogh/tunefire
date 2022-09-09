@@ -132,6 +132,11 @@ impl AppDelegate<State> for Delegate {
 				}
 				druid::Handled::Yes
 			}
+			_ if cmd.is(command::TAG_SEARCH) => {
+				let q = cmd.get::<String>(command::TAG_SEARCH).unwrap();
+				println!("{:?}", self.db.search_tag(q));
+				druid::Handled::Yes
+			}
 			_ => druid::Handled::No,
 		}
 	}

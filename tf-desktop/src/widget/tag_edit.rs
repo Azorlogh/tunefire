@@ -1,6 +1,6 @@
-use druid::{widget::TextBox, BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
+use druid::{BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
 
-use super::common::knob::Knob;
+use super::{common::knob::Knob, tag_text_box::TagTextBox};
 use crate::theme;
 
 type Data = (String, f32);
@@ -13,7 +13,7 @@ pub struct TagEdit {
 impl TagEdit {
 	pub fn new() -> Self {
 		Self {
-			text_box: WidgetPod::new(TextBox::new().boxed()),
+			text_box: WidgetPod::new(TagTextBox::new().boxed()),
 			knob: WidgetPod::new(
 				Knob::new()
 					.env_scope(|env, _| {

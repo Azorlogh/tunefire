@@ -24,7 +24,12 @@ pub struct State {
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let tracks: im::Vector<_> = db.list()?.iter().cloned().map(Rc::new).collect();
+		let tracks: im::Vector<_> = db
+			.list_filtered(&"".parse::<tf_db::Filter>().unwrap())?
+			.iter()
+			.cloned()
+			.map(Rc::new)
+			.collect();
 
 		Ok(Self {
 			player_state: Rc::new(player::State::default()),

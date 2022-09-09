@@ -242,4 +242,10 @@ impl Client {
 
 		Ok(tracks)
 	}
+
+	pub fn search_tag(&mut self, q: &str) -> Vec<String> {
+		let stmt = self.conn.prepare(&format!(r#"
+			SELECT * FROM
+		"#))
+	}
 }
