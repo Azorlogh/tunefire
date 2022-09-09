@@ -26,6 +26,7 @@ const TRACK_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("track_list.item.backgro
 
 mod add_track;
 mod media_bar;
+pub mod queue;
 mod track_list;
 
 pub fn ui() -> impl Widget<State> {

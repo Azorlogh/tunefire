@@ -131,6 +131,7 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 							data.player_state = Rc::new(ps.clone());
 						}
 						player::Event::TrackEnd => {
+							data.history.push_front(data.current_track.take().unwrap());
 							if let Some(track) = data.queue.pop_front() {
 								data.current_track = Some(track);
 								self.update_media_controls(data);
@@ -139,7 +140,6 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 								self.update_media_controls(data);
 							}
 						}
-						_ => {}
 					}
 					druid::Handled::No
 				}
@@ -156,12 +156,25 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 					self.play_pause(data);
 					druid::Handled::Yes
 				}
+				_ if cmd.is(PLAYER_PREV) && self.player.nb_queued() == 0 => {
+					if let Some(track) = data.history.pop_front() {
+						self.player
+							.queue_track(Url::parse(&track.source).unwrap())
+							.unwrap();
+						data.queue.push_front(data.current_track.take().unwrap());
+						data.current_track = Some(track);
+						self.player.skip().unwrap();
+						self.update_media_controls(data);
+					}
+					druid::Handled::Yes
+				}
 				_ if cmd.is(PLAYER_NEXT) => {
 					if self.player.nb_queued() == 0 {
 						if let Some(track) = data.queue.pop_front() {
 							self.player
 								.queue_track(Url::parse(&track.source).unwrap())
 								.unwrap();
+							data.history.push_front(data.current_track.take().unwrap());
 							data.current_track = Some(track);
 							self.player.skip().unwrap();
 							self.update_media_controls(data);

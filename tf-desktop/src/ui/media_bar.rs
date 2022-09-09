@@ -1,7 +1,7 @@
 use std::{rc::Rc, time::Duration};
 
 use druid::{
-	widget::{Button, Container, Flex, Label, List, Maybe, Painter, SizedBox},
+	widget::{Button, Container, Flex, Label, Maybe, Painter, SizedBox},
 	BoxConstraints, Data, EventCtx, Lens, Size, Widget, WidgetExt,
 };
 use tf_db::Track;
@@ -12,7 +12,6 @@ use crate::{
 	controller::playback,
 	theme,
 	widget::{overlay, player_bar::PlayerBar},
-	State,
 };
 
 #[derive(Clone, Data, Lens)]
@@ -37,28 +36,8 @@ pub fn ui() -> impl Widget<MediaBarState> {
 					BoxConstraints::tight(Size::new(300.0, 300.0)),
 					Box::new(move |env| {
 						Box::new(
-							Container::new(
-								Flex::column()
-									.with_child(
-										Maybe::new(
-											|| {
-												Label::new(|data: &Rc<Track>, _: &_| {
-													data.title.clone()
-												})
-											},
-											|| SizedBox::empty(),
-										)
-										.lens(State::current_track),
-									)
-									.with_flex_child(
-										List::new(|| {
-											Label::new(|data: &Rc<Track>, _: &_| data.title.clone())
-										})
-										.lens(State::queue),
-										1.0,
-									),
-							)
-							.border(env.get(theme::FOREGROUND), 1.0),
+							Container::new(super::queue::ui())
+								.border(env.get(theme::FOREGROUND), 1.0),
 						)
 					}),
 				)))

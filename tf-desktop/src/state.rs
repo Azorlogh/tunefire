@@ -12,6 +12,7 @@ pub struct State {
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
 	pub queue: im::Vector<Rc<Track>>,
+	pub history: im::Vector<Rc<Track>>,
 	pub query: String,
 	pub new_track: Option<NewTrack>,
 	pub new_track_url: String,
@@ -28,6 +29,7 @@ impl State {
 			player_state: Rc::new(player::State::default()),
 			tracks,
 			queue: im::Vector::new(),
+			history: im::Vector::new(),
 			query: String::new(),
 			new_track: None,
 			new_track_url: String::new(),

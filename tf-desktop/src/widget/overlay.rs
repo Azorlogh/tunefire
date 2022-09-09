@@ -1,8 +1,9 @@
-use crate::state::State;
 use druid::{
-	BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Point,
-	Rect, Selector, Size, UpdateCtx, Widget, WidgetPod,
+	keyboard_types::Key, BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx,
+	PaintCtx, Point, Rect, Selector, Size, UpdateCtx, Widget, WidgetPod,
 };
+
+use crate::state::State;
 
 type ChildBuilder = Box<dyn Fn(&Env) -> Box<dyn Widget<State>>>;
 
@@ -47,6 +48,12 @@ impl Widget<State> for Overlay {
 					}
 					ctx.set_handled();
 				}
+				// TODO: why am I not receiving this event?
+				// Event::KeyDown(evt) if evt.key == Key::Escape => {
+				// 	remove_child = true;
+				// 	ctx.set_active(false);
+				// 	ctx.set_handled();
+				// }
 				Event::MouseMove(_) => {
 					ctx.set_handled();
 				}
