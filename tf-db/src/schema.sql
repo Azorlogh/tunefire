@@ -17,7 +17,13 @@ CREATE TABLE IF NOT EXISTS track_tags (
 	PRIMARY KEY (track_id, tag_id)
 );
 
-CREATE VIRTUAL TABLE tag_search USING fts5(name, tokenize="trigram");
+CREATE VIRTUAL TABLE IF NOT EXISTS tag_search USING fts5(name, tokenize="trigram");
 
-INSERT INTO tag_search SELECT name FROM tags;
+INSERT INTO tag_search
+	SELECT name FROM tags src
+	WHERE NOT EXISTS (
+		SELECT name
+		FROM tag_search dst
+		WHERE src.name = dst.name
+	);
 

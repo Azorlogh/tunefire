@@ -1,12 +1,16 @@
 use druid::{
-	widget::{Button, Container, Flex, Label, TextBox},
+	keyboard_types::Key,
+	widget::{Container, Flex, Label, TextBox},
 	Widget, WidgetExt,
 };
 
 use crate::{
 	command,
 	state::NewTrack,
-	widget::controllers::{AutoFocus, ClickAfter, ClickBlocker, Enter, Focusable},
+	widget::{
+		common::focusable_button::FocusableButton,
+		controllers::{AutoFocus, ClickAfter, ClickBlocker, OnKey},
+	},
 };
 
 pub fn add_track() -> impl Widget<NewTrack> {
@@ -17,7 +21,7 @@ pub fn add_track() -> impl Widget<NewTrack> {
 				.with_default_spacer()
 				.with_child(
 					TextBox::new()
-						.controller(Enter::new(|ctx, _, _| ctx.focus_next()))
+						.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
 						.lens(NewTrack::source)
 						.expand_width(),
 				)
@@ -25,27 +29,22 @@ pub fn add_track() -> impl Widget<NewTrack> {
 					TextBox::new()
 						.with_placeholder("Artist")
 						.controller(AutoFocus)
-						.controller(Enter::new(|ctx, _, _| ctx.focus_next()))
+						.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
 						.lens(NewTrack::artist)
 						.expand_width(),
 				)
 				.with_child(
 					TextBox::new()
 						.with_placeholder("Title")
-						.controller(Enter::new(|ctx, _, _| ctx.focus_next()))
+						.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
 						.lens(NewTrack::title)
 						.expand_width(),
 				)
 				.with_default_spacer()
 				.with_child(
-					Button::new("Add")
-						.controller(Focusable)
-						.controller(Enter::new(|ctx, data: &mut NewTrack, _| {
-							ctx.submit_command(command::TRACK_ADD.with(data.clone()));
-						}))
-						.on_click(|ctx, data: &mut NewTrack, _| {
-							ctx.submit_command(command::TRACK_ADD.with(data.clone()));
-						}),
+					FocusableButton::new("Add").on_click(|ctx, data: &mut NewTrack, _| {
+						ctx.submit_command(command::TRACK_ADD.with(data.clone()));
+					}),
 				)
 				.padding(10.0),
 		)

@@ -1,14 +1,11 @@
 use std::rc::Rc;
 
 use druid::{
+	keyboard_types::Key,
 	kurbo::{BezPath, Circle},
 	lens::Map,
-	widget::{
-		Button, Container, ControllerHost, CrossAxisAlignment, Flex, Label, List, Maybe, Painter,
-		Scroll, SizedBox, TextBox,
-	},
-	Affine, Color, Env, EventCtx, Key, PaintCtx, RenderContext, TextAlignment, Vec2, Widget,
-	WidgetExt,
+	widget::{ControllerHost, Flex, Label, Maybe, Painter, Scroll, SizedBox, TextBox},
+	Affine, Env, EventCtx, PaintCtx, RenderContext, TextAlignment, Vec2, Widget, WidgetExt,
 };
 use tf_player::player;
 
@@ -16,17 +13,15 @@ use self::media_bar::MediaBarState;
 use crate::{
 	command,
 	controller::playback::PlaybackController,
-	state::TrackEdit,
 	theme,
-	widget::{common::stack::Stack, controllers::Enter, overlay::Overlay, tag_edit::TagEdit},
+	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay},
 	State,
 };
 
-const TRACK_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("track_list.item.background");
-
 mod add_track;
 mod media_bar;
-pub mod queue;
+mod queue;
+mod track_edit;
 mod track_list;
 
 pub fn ui() -> impl Widget<State> {
@@ -37,7 +32,7 @@ pub fn ui() -> impl Widget<State> {
 			Scroll::new(track_list::ui()).vertical().expand_height(),
 			1.0,
 		)
-		.with_child(Maybe::new(|| track_edit(), || SizedBox::empty()).lens(State::track_edit));
+		.with_child(Maybe::new(|| track_edit::ui(), || SizedBox::empty()).lens(State::track_edit));
 
 	let mut root = Flex::column();
 	root.add_default_spacer();
@@ -87,7 +82,9 @@ fn query_box() -> impl Widget<State> {
 				TextBox::new()
 					.with_placeholder("*")
 					.with_text_alignment(TextAlignment::Center),
-				Enter::new(|ctx, _, _| ctx.submit_command(command::QUERY_RUN)),
+				OnKey::new(Key::Enter, |ctx, _, _| {
+					ctx.submit_command(command::QUERY_RUN)
+				}),
 			)
 			.expand_width()
 			.lens(State::query),
@@ -102,40 +99,10 @@ fn query_box() -> impl Widget<State> {
 		.with_default_spacer()
 }
 
-fn track_edit() -> impl Widget<TrackEdit> {
-	let col =
-		Flex::column()
-			.cross_axis_alignment(CrossAxisAlignment::Fill)
-			.with_child(
-				Flex::row()
-					.with_child(Label::new("title"))
-					.with_child(TextBox::new().lens(TrackEdit::title)),
-			)
-			.with_default_spacer()
-			.with_child(
-				Flex::row()
-					.with_child(Label::new("source"))
-					.with_child(TextBox::new().lens(TrackEdit::source)),
-			)
-			.with_default_spacer()
-			.with_child(List::new(|| TagEdit::new()).lens(TrackEdit::tags))
-			.with_child(Button::new("+").on_click(|_, data: &mut TrackEdit, _| {
-				data.tags.push_back(("".to_owned(), 0.5));
-			}))
-			.with_flex_spacer(1.0)
-			.with_child(Button::new("CLOSE").on_click(|ctx, _: &mut TrackEdit, _| {
-				ctx.submit_command(command::UI_TRACK_EDIT_CLOSE)
-			}))
-			.env_scope(|env, _| env.set(druid::theme::BORDER_DARK, Color::TRANSPARENT))
-			.fix_width(400.0)
-			.padding(8.0);
-	Container::new(col).background(crate::theme::BACKGROUND_HIGHLIGHT0)
-}
-
 fn url_bar() -> impl Widget<State> {
 	ControllerHost::new(
 		TextBox::new().with_placeholder("Source"),
-		Enter::new(|ctx, data: &mut String, _| {
+		OnKey::new(Key::Enter, |ctx, data: &mut String, _| {
 			ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
 		}),
 	)
@@ -161,7 +128,7 @@ pub const ICON_DELETE: &str = include_str!("../../assets/delete.svg");
 pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 	let size = ctx.size();
 	let rad = size.min_side() / 2.0;
-	if ctx.is_hot() {
+	if ctx.is_hot() && ctx.has_focus() {
 		ctx.fill(
 			Circle::new((size.to_vec2() / 2.0).to_point(), rad),
 			&env.get(crate::theme::BACKGROUND_HIGHLIGHT1),

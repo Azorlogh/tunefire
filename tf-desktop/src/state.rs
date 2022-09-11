@@ -60,6 +60,13 @@ pub struct TrackEdit {
 	pub title: String,
 	pub source: String,
 	pub tags: im::Vector<(String, f32)>,
+	pub tag_suggestions: TagSuggestions,
+}
+
+#[derive(Clone, Data, Lens, Debug)]
+pub struct TagSuggestions {
+	pub tags: im::Vector<String>,
+	pub selected: usize,
 }
 
 impl TrackEdit {
@@ -69,6 +76,10 @@ impl TrackEdit {
 			title: track.title,
 			source: track.source,
 			tags: im::Vector::from_iter(track.tags.clone()),
+			tag_suggestions: TagSuggestions {
+				tags: im::Vector::new(),
+				selected: 0,
+			},
 		}
 	}
 

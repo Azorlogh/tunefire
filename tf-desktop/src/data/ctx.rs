@@ -27,11 +27,69 @@ where
 		Field::new(|c: &Self| &c.data, |c: &mut Self| &mut c.data)
 	}
 
+	pub fn ctx() -> impl Lens<Self, C> {
+		Field::new(|c: &Self| &c.ctx, |c: &mut Self| &mut c.ctx)
+	}
+
 	pub fn map<U>(map: impl Lens<T, U>) -> impl Lens<Self, Ctx<C, U>>
 	where
 		U: Data,
 	{
 		CtxMap { map }
+	}
+}
+
+impl<C, L> Ctx<C, L>
+where
+	C: Data,
+	L: Data,
+{
+	pub fn enumerate<T>() -> impl Lens<Self, CtxEnumerate<C, L>>
+	where
+		L: ListIter<T>,
+	{
+		druid::lens::Map::new(
+			|s: &Ctx<C, L>| CtxEnumerate { inner: s.clone() },
+			|s: &mut Ctx<C, L>, i: CtxEnumerate<C, L>| *s = i.inner,
+		)
+	}
+}
+
+#[derive(Clone, Data)]
+pub struct CtxEnumerate<C, T> {
+	inner: Ctx<C, T>,
+}
+
+impl<C, T, L> ListIter<Ctx<C, (usize, T)>> for CtxEnumerate<C, L>
+where
+	C: Data,
+	T: Data,
+	L: ListIter<T>,
+{
+	fn for_each(&self, mut cb: impl FnMut(&Ctx<C, (usize, T)>, usize)) {
+		self.inner.data.for_each(|item, index| {
+			let d = Ctx::new(self.inner.ctx.to_owned(), (index, item.to_owned()));
+			cb(&d, index);
+		});
+	}
+
+	fn for_each_mut(&mut self, mut cb: impl FnMut(&mut Ctx<C, (usize, T)>, usize)) {
+		let ctx = &mut self.inner.ctx;
+		let data = &mut self.inner.data;
+		data.for_each_mut(|item, index| {
+			let mut d = Ctx::new(ctx.to_owned(), (index, item.to_owned()));
+			cb(&mut d, index);
+			if !ctx.same(&d.ctx) {
+				*ctx = d.ctx;
+			}
+			if !item.same(&d.data.1) {
+				*item = d.data.1;
+			}
+		});
+	}
+
+	fn data_len(&self) -> usize {
+		self.inner.data.data_len()
 	}
 }
 

@@ -25,14 +25,12 @@ impl<T: Data> Stack<T> {
 
 impl<T: Data> Widget<T> for Stack<T> {
 	fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
-		self.children.reverse();
-		for child in self.children.iter_mut() {
+		for child in self.children.iter_mut().rev() {
 			child.event(ctx, event, data, env);
 			if ctx.is_handled() {
 				break;
 			}
 		}
-		self.children.reverse()
 	}
 
 	fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &T, env: &Env) {
