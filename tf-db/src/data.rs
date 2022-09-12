@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -6,7 +8,7 @@ pub struct Track {
 	pub source: String,
 	pub artist: String,
 	pub title: String,
-	pub tags: Vec<(String, f32)>,
+	pub tags: HashMap<String, f32>,
 }
 
 #[derive(Debug, Clone)]

@@ -1,9 +1,9 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use druid::{
-	lens,
-	widget::{Container, EnvScope, Flex, Label, List, Painter},
-	Color, Data, EventCtx, Key, Lens, Widget, WidgetExt,
+	im, lens,
+	widget::{Container, EnvScope, Flex, Label, List, Painter, SizedBox},
+	Color, Data, EventCtx, Key, Lens, LensExt, Widget, WidgetExt,
 };
 use tf_db::Track;
 use uuid::Uuid;
@@ -27,17 +27,103 @@ pub struct TrackCtx {
 }
 
 pub fn ui() -> impl Widget<State> {
-	List::new(song_ui).expand_width().lens(Ctx::make(
+	let title_column = List::new(|| {
+		Flex::column()
+			.with_child(
+				Label::new(|track: &Rc<Track>, _: &_| track.title.to_owned())
+					.with_text_size(16.0)
+					.fix_height(24.0),
+			)
+			.with_child(EnvScope::new(
+				|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
+				Label::new(|item: &Rc<Track>, _: &_| item.artist.to_owned())
+					.with_text_size(13.0)
+					.fix_height(10.0),
+			))
+			.lens(Ctx::<TrackCtx, Rc<Track>>::data())
+			.fix_height(64.0)
+			.background(TRACK_LIST_ITEM_BACKGROUND)
+			.env_scope(|env, state: &Ctx<_, _>| {
+				env.set(
+					TRACK_LIST_ITEM_BACKGROUND,
+					if state.ctx.selected.as_deref() == Some(&state.data.id) {
+						env.get(crate::theme::BACKGROUND_HIGHLIGHT0)
+					} else {
+						Color::TRANSPARENT
+					},
+				)
+			})
+	});
+
+	let tag_columns = List::new(|| {
+		Flex::column()
+			.with_child(Label::new(|s: &Ctx<_, (String, f32)>, _: &_| {
+				s.data.0.clone()
+			}))
+			.with_spacer(32.0)
+			.with_child(
+				List::new(|| {
+					Label::new(|s: &Ctx<(String, f32), Rc<Track>>, _: &_| String::from("aaaa"))
+				})
+				.scroll()
+				.lens(Ctx::make(Ctx::data(), Ctx::ctx())),
+			)
+	})
+	.horizontal()
+	.lens(State::tracks.then(Ctx::make(
+		lens::Map::new(|s: &im::Vector<Rc<Track>>| s.clone(), |_, _| {}),
 		lens::Map::new(
-			|s: &State| TrackCtx {
-				playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
-				selected: s.selected_track.as_ref().cloned(),
-			},
+			|s: &im::Vector<Rc<Track>>| Arc::new(s[0].tags.clone()),
 			|_, _| {},
 		),
-		State::tracks,
-	))
+	)));
+
+	Flex::row()
+		.with_flex_child(
+			Flex::column()
+				.with_child(Label::new("title"))
+				.with_spacer(32.0)
+				.with_child(title_column)
+				.expand_width()
+				.border(Color::WHITE, 1.0)
+				.lens(Ctx::make(
+					lens::Map::new(
+						|s: &State| TrackCtx {
+							playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
+							selected: s.selected_track.as_ref().cloned(),
+						},
+						|_, _| {},
+					),
+					State::tracks,
+				)),
+			1.0,
+		)
+		.with_child(tag_columns)
+
+	// table.expand_width().lens(Ctx::make(
+	// 	lens::Map::new(
+	// 		|s: &State| TrackCtx {
+	// 			playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
+	// 			selected: s.selected_track.as_ref().cloned(),
+	// 		},
+	// 		|_, _| {},
+	// 	),
+	// 	State::tracks,
+	// ))
 }
+
+// pub fn ui() -> impl Widget<State> {
+// 	List::new(song_ui).expand_width().lens(Ctx::make(
+// 		lens::Map::new(
+// 			|s: &State| TrackCtx {
+// 				playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
+// 				selected: s.selected_track.as_ref().cloned(),
+// 			},
+// 			|_, _| {},
+// 		),
+// 		State::tracks,
+// 	))
+// }
 
 fn song_ui() -> impl Widget<Ctx<TrackCtx, Rc<Track>>> {
 	let row = Flex::row()

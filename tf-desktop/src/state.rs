@@ -9,6 +9,7 @@ use uuid::Uuid;
 #[derive(Clone, Data, Lens)]
 pub struct State {
 	pub tracks: im::Vector<Rc<Track>>,
+	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
 	pub queue: im::Vector<Rc<Track>>,
@@ -24,16 +25,22 @@ pub struct State {
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let tracks: im::Vector<_> = db
+		let mut tracks: im::Vector<_> = db
 			.list_filtered(&"".parse::<tf_db::Filter>().unwrap())?
 			.iter()
 			.cloned()
 			.map(Rc::new)
 			.collect();
 
+		let first_track = tracks.get_mut(0).unwrap();
+		*first_track = Rc::new(db.get_track(first_track.id).unwrap());
+
+		println!("{:?}", tracks);
+
 		Ok(Self {
-			player_state: Rc::new(player::State::default()),
 			tracks,
+			shown_tags: im::Vector::from_iter(["bounce".to_owned()].into_iter()),
+			player_state: Rc::new(player::State::default()),
 			queue: im::Vector::new(),
 			history: im::Vector::new(),
 			query: String::new(),

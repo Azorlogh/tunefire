@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::{anyhow, Result};
 use rusqlite::params;
@@ -77,7 +77,7 @@ impl Client {
 					source: row.get(1)?,
 					artist: row.get(2)?,
 					title: row.get(3)?,
-					tags: vec![],
+					tags: HashMap::new(),
 				})
 			})
 			.map_err(|e| anyhow!("failed to get track: {}", e))?;
@@ -95,8 +95,9 @@ impl Client {
 		let tags = stmt
 			.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
 			.unwrap();
-		for tag in tags {
-			track.tags.push(tag.unwrap());
+		for tag in tags.into_iter() {
+			let (name, value) = tag.unwrap();
+			track.tags.insert(name, value);
 		}
 
 		Ok(track)
@@ -123,7 +124,7 @@ impl Client {
 					source: row.get(1)?,
 					artist: row.get(2)?,
 					title: row.get(3)?,
-					tags: vec![],
+					tags: HashMap::new(),
 				})
 			})?
 			.collect::<Result<Vec<Track>, _>>()
@@ -230,7 +231,7 @@ impl Client {
 					source: row.get(1)?,
 					artist: row.get(2)?,
 					title: row.get(3)?,
-					tags: vec![],
+					tags: HashMap::new(),
 				})
 			})?
 			.collect::<Result<Vec<Track>, _>>()
