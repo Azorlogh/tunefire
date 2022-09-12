@@ -3,20 +3,22 @@ use std::rc::Rc;
 use druid::{
 	lens,
 	widget::{Container, EnvScope, Flex, Label, List, Painter},
-	Color, Data, EventCtx, Lens, Widget, WidgetExt,
+	Color, Data, EventCtx, Key, Lens, Widget, WidgetExt,
 };
 use tf_db::Track;
 use uuid::Uuid;
 
-use super::{
-	draw_icon_button, ICON_DELETE, ICON_EDIT, ICON_PAUSE, ICON_PLAY, TRACK_LIST_ITEM_BACKGROUND,
-};
+use super::{draw_icon_button, ICON_DELETE, ICON_EDIT, ICON_PAUSE, ICON_PLAY};
 use crate::{
 	command,
 	controller::playback::{PLAYER_CLEAR, PLAYER_ENQUEUE, PLAYER_PLAY_PAUSE},
 	data::ctx::Ctx,
-	theme, State,
+	theme,
+	widget::{common::focusable_button::FocusableButton, controllers::AutoFocus, overlay},
+	State,
 };
+
+const TRACK_LIST_ITEM_BACKGROUND: Key<Color> = Key::new("track_list.item.background");
 
 #[derive(Clone, Data, Lens)]
 pub struct TrackCtx {
@@ -71,7 +73,46 @@ fn song_ui() -> impl Widget<Ctx<TrackCtx, Rc<Track>>> {
 			Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
 				.fix_size(36.0, 36.0)
 				.on_click(|ctx: &mut EventCtx, track: &mut Rc<Track>, _| {
-					ctx.submit_command(command::TRACK_DELETE.with(track.id))
+					let track_id = track.id;
+					ctx.submit_command(overlay::SHOW_MODAL.with((
+						Color::rgba(1.0, 1.0, 1.0, 0.1),
+						Box::new(move |_| {
+							Container::new(
+								Flex::column()
+									.with_child(Label::new("Delete this track?"))
+									.with_default_spacer()
+									.with_child(
+										Flex::row()
+											.with_child(
+												FocusableButton::new("Cancel")
+													.on_click(move |ctx, _, _| {
+														ctx.submit_command(overlay::HIDE);
+													})
+													.controller(AutoFocus),
+											)
+											.with_default_spacer()
+											.with_child(
+												FocusableButton::new("Delete")
+													.on_click(move |ctx, _, _| {
+														ctx.submit_command(
+															command::TRACK_DELETE.with(track_id),
+														);
+														ctx.submit_command(overlay::HIDE);
+													})
+													.env_scope(|env, _| {
+														env.set(
+															druid::theme::BUTTON_DARK,
+															Color::RED,
+														)
+													}),
+											),
+									),
+							)
+							.padding(8.0)
+							.background(theme::BACKGROUND)
+							.boxed()
+						}),
+					)));
 				})
 				.lens(Ctx::<TrackCtx, Rc<Track>>::data()),
 		)

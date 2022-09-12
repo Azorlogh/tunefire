@@ -1,18 +1,18 @@
-use druid::{
-	keyboard_types::Key, widget::Controller, Data, Env, Event, EventCtx, KeyEvent, Widget,
-};
+use druid::{keyboard_types::Key, widget::Controller, Data, Env, Event, EventCtx, Widget};
 
-pub struct Enter<T> {
+pub struct OnKey<T> {
+	key: Key,
 	action: Box<dyn Fn(&mut EventCtx, &mut T, &Env)>,
 }
-impl<T: Data> Enter<T> {
-	pub fn new(action: impl Fn(&mut EventCtx, &mut T, &Env) + 'static) -> Self {
+impl<T: Data> OnKey<T> {
+	pub fn new(key: Key, action: impl Fn(&mut EventCtx, &mut T, &Env) + 'static) -> Self {
 		Self {
+			key,
 			action: Box::new(action),
 		}
 	}
 }
-impl<T: Data, W: Widget<T>> Controller<T, W> for Enter<T> {
+impl<T: Data, W: Widget<T>> Controller<T, W> for OnKey<T> {
 	fn event(
 		&mut self,
 		child: &mut W,
@@ -22,9 +22,7 @@ impl<T: Data, W: Widget<T>> Controller<T, W> for Enter<T> {
 		env: &druid::Env,
 	) {
 		match event {
-			Event::KeyDown(KeyEvent {
-				key: Key::Enter, ..
-			}) => {
+			Event::KeyDown(evt) if evt.key == self.key => {
 				(self.action)(ctx, data, env);
 			}
 			_ => child.event(ctx, event, data, env),

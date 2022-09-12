@@ -242,4 +242,17 @@ impl Client {
 
 		Ok(tracks)
 	}
+
+	pub fn search_tag(&mut self, q: &str) -> Result<Vec<String>> {
+		let mut stmt = self.conn.prepare(&format!(
+			r#"
+				SELECT name FROM tag_search('{q}');
+			"#
+		))?;
+		let tags = stmt
+			.query_map(params![], |row| Ok(row.get::<_, String>(0)?))?
+			.collect::<Result<Vec<String>, _>>()
+			.map_err(|e| anyhow!("failed to find tags: {}", e))?;
+		Ok(tags)
+	}
 }

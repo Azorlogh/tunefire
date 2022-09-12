@@ -24,7 +24,12 @@ pub struct State {
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let tracks: im::Vector<_> = db.list()?.iter().cloned().map(Rc::new).collect();
+		let tracks: im::Vector<_> = db
+			.list_filtered(&"".parse::<tf_db::Filter>().unwrap())?
+			.iter()
+			.cloned()
+			.map(Rc::new)
+			.collect();
 
 		Ok(Self {
 			player_state: Rc::new(player::State::default()),
@@ -55,6 +60,13 @@ pub struct TrackEdit {
 	pub title: String,
 	pub source: String,
 	pub tags: im::Vector<(String, f32)>,
+	pub tag_suggestions: TagSuggestions,
+}
+
+#[derive(Clone, Data, Lens, Debug)]
+pub struct TagSuggestions {
+	pub tags: im::Vector<String>,
+	pub selected: usize,
 }
 
 impl TrackEdit {
@@ -64,6 +76,10 @@ impl TrackEdit {
 			title: track.title,
 			source: track.source,
 			tags: im::Vector::from_iter(track.tags.clone()),
+			tag_suggestions: TagSuggestions {
+				tags: im::Vector::new(),
+				selected: 0,
+			},
 		}
 	}
 

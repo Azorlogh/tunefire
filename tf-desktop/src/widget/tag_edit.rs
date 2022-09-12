@@ -1,19 +1,26 @@
-use druid::{widget::TextBox, BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
+use druid::{BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
 
-use super::common::knob::Knob;
-use crate::theme;
+use super::{common::knob::Knob, tag_text_box::TagTextBox};
+use crate::{data::ctx::Ctx, state::TagSuggestions, theme};
 
-type Data = (String, f32);
+type Data = Ctx<TagSuggestions, (String, f32)>;
 
 pub struct TagEdit {
-	text_box: WidgetPod<String, Box<dyn Widget<String>>>,
+	text_box: WidgetPod<Data, Box<dyn Widget<Data>>>,
 	knob: WidgetPod<f32, Box<dyn Widget<f32>>>,
 }
 
 impl TagEdit {
 	pub fn new() -> Self {
 		Self {
-			text_box: WidgetPod::new(TextBox::new().boxed()),
+			text_box: WidgetPod::new(
+				TagTextBox::new()
+					.lens(Ctx::map(druid::lens::Field::new(
+						|x: &(String, f32)| &x.0,
+						|x| &mut x.0,
+					)))
+					.boxed(),
+			),
 			knob: WidgetPod::new(
 				Knob::new()
 					.env_scope(|env, _| {
@@ -33,8 +40,8 @@ impl Widget<Data> for TagEdit {
 		data: &mut Data,
 		env: &druid::Env,
 	) {
-		self.text_box.event(ctx, event, &mut data.0, env);
-		self.knob.event(ctx, event, &mut data.1, env);
+		self.text_box.event(ctx, event, data, env);
+		self.knob.event(ctx, event, &mut data.data.1, env);
 	}
 
 	fn lifecycle(
@@ -44,8 +51,8 @@ impl Widget<Data> for TagEdit {
 		data: &Data,
 		env: &druid::Env,
 	) {
-		self.text_box.lifecycle(ctx, event, &data.0, env);
-		self.knob.lifecycle(ctx, event, &data.1, env);
+		self.text_box.lifecycle(ctx, event, data, env);
+		self.knob.lifecycle(ctx, event, &data.data.1, env);
 	}
 
 	fn update(
@@ -55,8 +62,8 @@ impl Widget<Data> for TagEdit {
 		data: &Data,
 		env: &druid::Env,
 	) {
-		self.text_box.update(ctx, &data.0, env);
-		self.knob.update(ctx, &data.1, env);
+		self.text_box.update(ctx, data, env);
+		self.knob.update(ctx, &data.data.1, env);
 	}
 
 	fn layout(
@@ -66,23 +73,23 @@ impl Widget<Data> for TagEdit {
 		data: &Data,
 		env: &druid::Env,
 	) -> druid::Size {
-		let text_box_size = self.text_box.layout(ctx, bc, &data.0, env);
+		let text_box_size = self.text_box.layout(ctx, bc, data, env);
 		let knob_bc = BoxConstraints::new(
 			Size::new(0.0, 0.0),
 			Size::new(text_box_size.height, text_box_size.height),
 		);
-		let knob_size = self.knob.layout(ctx, &knob_bc, &data.1, env);
+		let knob_size = self.knob.layout(ctx, &knob_bc, &data.data.1, env);
 
 		let text_box_bc = BoxConstraints::tight(Size::new(
 			text_box_size.width - knob_size.width,
 			text_box_size.height,
 		));
-		let text_box_size = self.text_box.layout(ctx, &text_box_bc, &data.0, env);
+		let text_box_size = self.text_box.layout(ctx, &text_box_bc, data, env);
 
 		self.text_box
-			.set_origin(ctx, &data.0, env, Point::new(0.0, 0.0));
+			.set_origin(ctx, data, env, Point::new(0.0, 0.0));
 		self.knob
-			.set_origin(ctx, &data.1, env, Point::new(text_box_size.width, 0.0));
+			.set_origin(ctx, &data.data.1, env, Point::new(text_box_size.width, 0.0));
 		Size::new(
 			text_box_size.width + knob_size.width,
 			text_box_size.height.max(knob_size.height),
@@ -90,7 +97,7 @@ impl Widget<Data> for TagEdit {
 	}
 
 	fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &Data, env: &druid::Env) {
-		self.text_box.paint(ctx, &data.0, env);
-		self.knob.paint(ctx, &data.1, env);
+		self.text_box.paint(ctx, data, env);
+		self.knob.paint(ctx, &data.data.1, env);
 	}
 }

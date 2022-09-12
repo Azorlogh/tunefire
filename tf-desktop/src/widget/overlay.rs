@@ -1,6 +1,6 @@
 use druid::{
-	BoxConstraints, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Point,
-	Rect, Selector, Size, UpdateCtx, Widget, WidgetPod,
+	BoxConstraints, Color, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
+	Point, Rect, RenderContext, Selector, Size, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::state::State;
@@ -11,6 +11,7 @@ pub const SHOW_AT: Selector<(Point, BoxConstraints, ChildBuilder)> =
 	Selector::new("dropdown.show-at");
 pub const SHOW_MIDDLE: Selector<(BoxConstraints, ChildBuilder)> =
 	Selector::new("dropdown.show-middle");
+pub const SHOW_MODAL: Selector<(Color, ChildBuilder)> = Selector::new("dropdown.show-modal");
 pub const HIDE: Selector = Selector::new("dropdown.hide");
 
 pub struct Child {
@@ -19,20 +20,22 @@ pub struct Child {
 	widget: WidgetPod<State, Box<dyn Widget<State>>>,
 }
 
-pub struct Overlay {
-	child: Option<Child>,
+pub enum Overlay {
+	Inactive,
+	Active { child: Child, background: Color },
 }
 
 impl Overlay {
 	pub fn new() -> Overlay {
-		Overlay { child: None }
+		Overlay::Inactive
 	}
 }
 
 impl Widget<State> for Overlay {
 	fn event(&mut self, ctx: &mut EventCtx, event: &Event, data: &mut State, env: &Env) {
 		let mut remove_child = false;
-		if let Some(child) = &mut self.child {
+		if let Overlay::Active { child, .. } = self {
+			// println!("{event:?}");
 			child.widget.event(ctx, event, data, env);
 			match event {
 				Event::MouseDown(mouse) => {
@@ -49,11 +52,11 @@ impl Widget<State> for Overlay {
 					ctx.set_handled();
 				}
 				// TODO: why am I not receiving this event?
-				// Event::KeyDown(evt) if evt.key == Key::Escape => {
-				// 	remove_child = true;
-				// 	ctx.set_active(false);
-				// 	ctx.set_handled();
-				// }
+				Event::KeyDown(evt) if evt.key == druid::keyboard_types::Key::Escape => {
+					remove_child = true;
+					ctx.set_active(false);
+					ctx.set_handled();
+				}
 				Event::MouseMove(_) => {
 					ctx.set_handled();
 				}
@@ -63,20 +66,38 @@ impl Widget<State> for Overlay {
 		match event {
 			Event::Command(cmd) if cmd.is(SHOW_AT) => {
 				let (pos, bc, child_builder) = cmd.get_unchecked(SHOW_AT);
-				self.child = Some(Child {
-					origin: Some(*pos),
-					bc: *bc,
-					widget: WidgetPod::new(child_builder(env)),
-				});
+				*self = Overlay::Active {
+					child: Child {
+						origin: Some(*pos),
+						bc: *bc,
+						widget: WidgetPod::new(child_builder(env)),
+					},
+					background: Color::TRANSPARENT,
+				};
 				ctx.children_changed();
 			}
 			Event::Command(cmd) if cmd.is(SHOW_MIDDLE) => {
 				let (bc, child_builder) = cmd.get_unchecked(SHOW_MIDDLE);
-				self.child = Some(Child {
-					origin: None,
-					bc: *bc,
-					widget: WidgetPod::new(child_builder(env)),
-				});
+				*self = Overlay::Active {
+					child: Child {
+						origin: None,
+						bc: *bc,
+						widget: WidgetPod::new(child_builder(env)),
+					},
+					background: Color::TRANSPARENT,
+				};
+				ctx.children_changed();
+			}
+			Event::Command(cmd) if cmd.is(SHOW_MODAL) => {
+				let (background, child_builder) = cmd.get_unchecked(SHOW_MODAL);
+				*self = Overlay::Active {
+					child: Child {
+						origin: None,
+						bc: BoxConstraints::tight(ctx.size()).loosen(),
+						widget: WidgetPod::new(child_builder(env)),
+					},
+					background: background.clone(),
+				};
 				ctx.children_changed();
 			}
 			Event::Command(cmd) if cmd.is(HIDE) => {
@@ -85,20 +106,20 @@ impl Widget<State> for Overlay {
 			_ => {}
 		}
 		if remove_child {
-			self.child = None;
+			*self = Overlay::Inactive;
 			ctx.request_layout();
 			ctx.request_paint();
 		}
 	}
 
 	fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, data: &State, env: &Env) {
-		if let Some(child) = &mut self.child {
+		if let Overlay::Active { child, .. } = self {
 			child.widget.lifecycle(ctx, event, data, env);
 		}
 	}
 
 	fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &State, data: &State, env: &Env) {
-		if let Some(child) = &mut self.child {
+		if let Overlay::Active { child, .. } = self {
 			child.widget.update(ctx, data, env);
 		}
 	}
@@ -110,7 +131,7 @@ impl Widget<State> for Overlay {
 		data: &State,
 		env: &Env,
 	) -> Size {
-		if let Some(child) = &mut self.child {
+		if let Overlay::Active { child, .. } = self {
 			let size = child.widget.layout(ctx, &child.bc, data, env);
 			let origin = child
 				.origin
@@ -123,7 +144,9 @@ impl Widget<State> for Overlay {
 	}
 
 	fn paint(&mut self, ctx: &mut PaintCtx, data: &State, env: &Env) {
-		if let Some(child) = &mut self.child {
+		let size = ctx.size();
+		if let Overlay::Active { child, background } = self {
+			ctx.fill(size.to_rect(), background);
 			child.widget.paint(ctx, data, env);
 		}
 	}
