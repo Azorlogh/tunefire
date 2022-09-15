@@ -57,26 +57,18 @@ pub fn ui() -> impl Widget<State> {
 
 	let tag_columns = List::new(|| {
 		Flex::column()
-			.with_child(Label::new(|s: &Ctx<_, (String, f32)>, _: &_| {
-				s.data.0.clone()
-			}))
+			.with_child(Label::new(|s: &Ctx<_, String>, _: &_| s.data.clone()))
 			.with_spacer(32.0)
 			.with_child(
 				List::new(|| {
-					Label::new(|s: &Ctx<(String, f32), Rc<Track>>, _: &_| String::from("aaaa"))
+					Knob::new(|s: &Ctx<String, Rc<Track>>, _: &_| s.data.tags.get(&s.ctx))
 				})
 				.scroll()
 				.lens(Ctx::make(Ctx::data(), Ctx::ctx())),
 			)
 	})
 	.horizontal()
-	.lens(State::tracks.then(Ctx::make(
-		lens::Map::new(|s: &im::Vector<Rc<Track>>| s.clone(), |_, _| {}),
-		lens::Map::new(
-			|s: &im::Vector<Rc<Track>>| Arc::new(s[0].tags.clone()),
-			|_, _| {},
-		),
-	)));
+	.lens(Ctx::make(State::tracks, State::shown_tags));
 
 	Flex::row()
 		.with_flex_child(
