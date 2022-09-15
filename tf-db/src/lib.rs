@@ -66,6 +66,28 @@ impl Client {
 		Ok(())
 	}
 
+	pub fn get_track_tags(&self, id: Uuid) -> Result<HashMap<String, f32>> {
+		let mut stmt = self.conn.prepare(
+			r#"
+			SELECT name, "value"
+			FROM track_tags
+			INNER JOIN tracks ON track_tags.track_id = tracks.id
+			INNER JOIN tags ON track_tags.tag_id = tags.id
+			WHERE tracks.id = ?
+		"#,
+		)?;
+
+		let tags = stmt
+			.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
+			.unwrap();
+		let mut result = HashMap::new();
+		for tag in tags.into_iter() {
+			let (name, value) = tag.unwrap();
+			result.insert(name, value);
+		}
+		Ok(result)
+	}
+
 	pub fn get_track(&self, id: Uuid) -> Result<Track> {
 		let mut stmt = self
 			.conn
@@ -81,24 +103,7 @@ impl Client {
 				})
 			})
 			.map_err(|e| anyhow!("failed to get track: {}", e))?;
-
-		let mut stmt = self.conn.prepare(
-			r#"
-			SELECT name, "value"
-			FROM track_tags
-			INNER JOIN tracks ON track_tags.track_id = tracks.id
-			INNER JOIN tags ON track_tags.tag_id = tags.id
-			WHERE tracks.id = ?
-		"#,
-		)?;
-
-		let tags = stmt
-			.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
-			.unwrap();
-		for tag in tags.into_iter() {
-			let (name, value) = tag.unwrap();
-			track.tags.insert(name, value);
-		}
+		track.tags = self.get_track_tags(track.id)?;
 
 		Ok(track)
 	}
@@ -234,6 +239,12 @@ impl Client {
 					tags: HashMap::new(),
 				})
 			})?
+			.map(|result| {
+				result.map(|mut track| {
+					track.tags = self.get_track_tags(track.id).unwrap();
+					track
+				})
+			})
 			.collect::<Result<Vec<Track>, _>>()
 			.map_err(|e| anyhow!("failed list tracks: {}", e))?;
 

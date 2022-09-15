@@ -13,7 +13,7 @@ use url::Url;
 use crate::{media_controls::MediaControls, State};
 
 pub const PLAYER_CLEAR: Selector = Selector::new("player.clear");
-pub const PLAYER_ENQUEUE: Selector<Rc<Track>> = Selector::new("player.enqueue");
+pub const PLAYER_ENQUEUE: Selector<Track> = Selector::new("player.enqueue");
 pub const PLAYER_PLAY_PAUSE: Selector = Selector::new("player.play-pause");
 pub const PLAYER_SEEK: Selector<Duration> = Selector::new("player.seek");
 pub const PLAYER_PREV: Selector = Selector::new("player.prev");
@@ -149,7 +149,7 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 					druid::Handled::Yes
 				}
 				_ if cmd.is(PLAYER_ENQUEUE) => {
-					let track = cmd.get_unchecked::<Rc<Track>>(PLAYER_ENQUEUE);
+					let track = cmd.get_unchecked::<Track>(PLAYER_ENQUEUE);
 					self.queue_track(data, track);
 					druid::Handled::Yes
 				}

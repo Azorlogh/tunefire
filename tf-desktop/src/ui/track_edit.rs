@@ -1,15 +1,14 @@
 use druid::{
-	keyboard_types::Key,
 	lens,
 	widget::{Container, CrossAxisAlignment, Flex, Label, List, TextBox},
-	Color, Data, Widget, WidgetExt,
+	Data, Widget, WidgetExt,
 };
 
 use crate::{
 	command,
 	data::ctx::Ctx,
 	state::TrackEdit,
-	widget::{common::focusable_button::FocusableButton, controllers::OnKey, tag_edit::TagEdit},
+	widget::{common::focusable_button::FocusableButton, tag_edit::TagEdit},
 };
 
 pub fn ui() -> impl Widget<TrackEdit> {

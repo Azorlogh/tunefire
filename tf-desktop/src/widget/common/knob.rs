@@ -132,12 +132,14 @@ impl Widget<f32> for Knob {
 		}
 		let mut path = BezPath::new();
 		for i in 0..=STEPS {
-			let ang = i as f64 / STEPS as f64 * TAU;
-			path.line_to(Point::new(ang.cos() * radius, ang.sin() * radius));
+			let ang0 = i as f64 / STEPS as f64 * TAU;
+			let ang1 = (i + 1) as f64 / STEPS as f64 * TAU;
+			path.line_to(Point::new(ang0.cos() * radius, ang0.sin() * radius));
+			path.line_to(Point::new(ang1.cos() * radius, ang1.sin() * radius));
 			path.move_to(Point::ZERO);
 		}
 		path.close_path();
 		path.apply_affine(Affine::translate(center.to_vec2()));
-		ctx.stroke(path, &env.get(crate::theme::BACKGROUND_HIGHLIGHT0), 1.0);
+		ctx.stroke(path, &env.get(crate::theme::BACKGROUND_HIGHLIGHT1), 1.0);
 	}
 }

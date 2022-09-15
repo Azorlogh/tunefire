@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::Result;
 use druid::{im, Data, Lens};
@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
-	pub tracks: im::Vector<Rc<Track>>,
+	pub tracks: im::Vector<Rc<RefCell<Track>>>,
 	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
@@ -25,21 +25,19 @@ pub struct State {
 
 impl State {
 	pub fn new(db: &mut tf_db::Client) -> Result<Self> {
-		let mut tracks: im::Vector<_> = db
+		let tracks: im::Vector<_> = db
 			.list_filtered(&"".parse::<tf_db::Filter>().unwrap())?
 			.iter()
 			.cloned()
+			.map(RefCell::new)
 			.map(Rc::new)
 			.collect();
 
-		let first_track = tracks.get_mut(0).unwrap();
-		*first_track = Rc::new(db.get_track(first_track.id).unwrap());
-
-		println!("{:?}", tracks);
-
 		Ok(Self {
 			tracks,
-			shown_tags: im::Vector::from_iter(["bounce".to_owned()].into_iter()),
+			shown_tags: im::Vector::from_iter(
+				["wednesdayairesntariesnt".to_owned(), "dark".to_owned()].into_iter(),
+			),
 			player_state: Rc::new(player::State::default()),
 			queue: im::Vector::new(),
 			history: im::Vector::new(),

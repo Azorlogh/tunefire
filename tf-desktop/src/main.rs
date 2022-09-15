@@ -25,7 +25,8 @@ fn main() -> Result<()> {
 		.without_time()
 		.with_target(true)
 		.with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
-			metadata.target().starts_with("tf")
+			// metadata.target().starts_with("tf")
+			true
 		}));
 	tracing_subscriber::registry()
 		.with(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("debug")))
