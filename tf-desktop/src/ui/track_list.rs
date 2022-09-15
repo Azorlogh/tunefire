@@ -2,18 +2,25 @@ use std::{cell::RefCell, rc::Rc};
 
 use druid::{
 	lens,
-	widget::{Axis, CrossAxisAlignment, EnvScope, Flex, Label, List, Painter},
-	Color, Data, EventCtx, Key, Lens, Widget, WidgetExt,
+	widget::{
+		Axis, CrossAxisAlignment, Either, EnvScope, Flex, Label, List, MainAxisAlignment, Painter,
+		SizedBox,
+	},
+	Color, Data, EventCtx, Key, Lens, RenderContext, Widget, WidgetExt,
 };
 use tf_db::Track;
 use uuid::Uuid;
 
-use super::{draw_icon_button, ICON_PAUSE, ICON_PLAY};
+use super::{draw_icon_button, ICON_EDIT, ICON_PAUSE, ICON_PLAY};
 use crate::{
+	command,
 	controller::playback::{PLAYER_CLEAR, PLAYER_ENQUEUE, PLAYER_PLAY_PAUSE},
 	data::ctx::Ctx,
 	theme,
-	widget::common::{knob::Knob, separator::Separator},
+	widget::{
+		common::{knob::Knob, separator::Separator, stack::Stack},
+		controllers::OnHotChange,
+	},
 	State,
 };
 
@@ -41,32 +48,12 @@ pub fn ui() -> impl Widget<State> {
 					.with_text_size(13.0)
 					.fix_height(10.0),
 			))
-			.align_left()
+			.main_axis_alignment(MainAxisAlignment::Center)
+			.cross_axis_alignment(CrossAxisAlignment::Start)
 			.expand_width()
 			.fix_height(64.0)
+			.lens(Ctx::data())
 	};
-
-	let title_column = List::new(move || {
-		Flex::column()
-			.with_child(
-				Separator::new()
-					.with_width(1.0)
-					.with_color(theme::BACKGROUND_HIGHLIGHT1),
-			)
-			.with_child(track_title())
-			.background(TRACK_LIST_ITEM_BACKGROUND)
-			.lens(Ctx::<TrackCtx, Rc<RefCell<Track>>>::data())
-			.env_scope(|env, state: &_| {
-				env.set(
-					TRACK_LIST_ITEM_BACKGROUND,
-					if state.ctx.selected.as_deref() == Some(&state.data.borrow().id) {
-						env.get(crate::theme::BACKGROUND_HIGHLIGHT0)
-					} else {
-						Color::TRANSPARENT
-					},
-				)
-			})
-	});
 
 	let tag_columns = List::new(|| {
 		Flex::row()
@@ -124,21 +111,47 @@ pub fn ui() -> impl Widget<State> {
 	.horizontal()
 	.lens(Ctx::make(State::tracks, State::shown_tags));
 
-	Flex::row()
+	let table = Flex::row()
+		.with_child(column_ui("", || play_track_button().center()).fix_width(64.0))
+		.with_flex_child(column_ui("Title", track_title), 1.0)
+		.with_child(Either::new(
+			|s: &State, _: _| s.track_edit.is_none(),
+			tag_columns,
+			SizedBox::empty(),
+		))
+		.with_child(
+			column_ui("", || {
+				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_EDIT))
+					.fix_size(36.0, 36.0)
+					.on_click(
+						|ctx: &mut EventCtx, track: &mut Ctx<_, Rc<RefCell<Track>>>, _| {
+							ctx.submit_command(
+								command::UI_TRACK_EDIT_OPEN.with(track.data.borrow().id),
+							)
+						},
+					)
+					.center()
+			})
+			.fix_width(64.0),
+		)
+		.with_default_spacer();
+
+	Stack::new()
 		.with_child(
 			Flex::column()
 				.with_child(Label::new(""))
 				.with_default_spacer()
-				.with_child(List::new(move || {
-					Flex::column()
-						.with_child(
-							Separator::new()
-								.with_width(1.0)
-								.with_color(theme::BACKGROUND_HIGHLIGHT1),
-						)
-						.with_flex_child(play_track_button().center(), 1.0)
+				.with_flex_child(
+					List::new(|| {
+						Painter::new(|ctx, _, env| {
+							if ctx.is_hot() {
+								let size = ctx.size().to_rect();
+								ctx.fill(size, &env.get(theme::BACKGROUND_HIGHLIGHT0))
+							}
+						})
+						.controller(OnHotChange::new(|ctx, _, _, _| ctx.request_paint()))
 						.background(TRACK_LIST_ITEM_BACKGROUND)
-						.env_scope(|env, state: &_| {
+						.env_scope(|env, state: &Ctx<TrackCtx, Rc<RefCell<Track>>>| {
 							env.set(
 								TRACK_LIST_ITEM_BACKGROUND,
 								if state.ctx.selected.as_deref() == Some(&state.data.borrow().id) {
@@ -149,39 +162,61 @@ pub fn ui() -> impl Widget<State> {
 							)
 						})
 						.fix_height(TRACK_HEIGHT + 1.0)
-						.fix_width(64.0)
-				}))
-				.lens(Ctx::make(
-					lens::Map::new(
-						|s: &State| TrackCtx {
-							playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
-							selected: s.selected_track.as_ref().cloned(),
-						},
-						|_, _| {},
-					),
-					State::tracks,
-				)),
+					})
+					.lens(Ctx::make(
+						lens::Map::new(
+							|s: &State| TrackCtx {
+								playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
+								selected: s.selected_track.as_ref().cloned(),
+							},
+							|_, _| {},
+						),
+						State::tracks,
+					)),
+					1.0,
+				),
 		)
-		.with_flex_child(
-			Flex::column()
-				.with_child(Label::new("Title").expand_width())
-				.with_default_spacer()
-				.with_child(title_column)
-				.expand_width()
-				.lens(Ctx::make(
-					lens::Map::new(
-						|s: &State| TrackCtx {
-							playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
-							selected: s.selected_track.as_ref().cloned(),
-						},
-						|_, _| {},
-					),
-					State::tracks,
-				)),
-			1.0,
-		)
-		.with_child(tag_columns)
+		.with_child(table)
+}
+
+fn column_ui<W>(name: &str, inner: impl Fn() -> W + 'static) -> impl Widget<State>
+where
+	W: Widget<Ctx<TrackCtx, Rc<RefCell<Track>>>> + 'static,
+{
+	Flex::column()
+		.with_child(Label::new(name).align_left())
 		.with_default_spacer()
+		.with_child(List::new(move || {
+			Flex::column()
+				.with_child(
+					Separator::new()
+						.with_width(1.0)
+						.with_color(theme::BACKGROUND_HIGHLIGHT1),
+				)
+				.with_flex_child(inner(), 1.0)
+				.background(TRACK_LIST_ITEM_BACKGROUND)
+				.env_scope(|env, state: &_| {
+					env.set(
+						TRACK_LIST_ITEM_BACKGROUND,
+						if state.ctx.selected.as_deref() == Some(&state.data.borrow().id) {
+							env.get(crate::theme::BACKGROUND_HIGHLIGHT0)
+						} else {
+							Color::TRANSPARENT
+						},
+					)
+				})
+				.fix_height(TRACK_HEIGHT + 1.0)
+		}))
+		.lens(Ctx::make(
+			lens::Map::new(
+				|s: &State| TrackCtx {
+					playing: s.current_track.as_ref().map(|t| Rc::new(t.id)),
+					selected: s.selected_track.as_ref().cloned(),
+				},
+				|_, _| {},
+			),
+			State::tracks,
+		))
 }
 
 // fn song_ui() -> impl Widget<Ctx<TrackCtx, Rc<Track>>> {

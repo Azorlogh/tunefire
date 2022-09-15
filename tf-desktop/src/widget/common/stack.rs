@@ -63,4 +63,23 @@ impl<T: Data> Widget<T> for Stack<T> {
 			child.paint(ctx, data, env);
 		}
 	}
+
+	fn compute_max_intrinsic(
+		&mut self,
+		axis: druid::widget::Axis,
+		ctx: &mut LayoutCtx,
+		bc: &BoxConstraints,
+		data: &T,
+		env: &Env,
+	) -> f64 {
+		let mut max = 0f64;
+		for child in &mut self.children {
+			max = max.max(
+				child
+					.widget_mut()
+					.compute_max_intrinsic(axis, ctx, bc, data, env),
+			)
+		}
+		max
+	}
 }
