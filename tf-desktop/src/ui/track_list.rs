@@ -152,60 +152,9 @@ pub fn ui() -> impl Widget<State> {
 			})
 			.fix_width(64.0),
 		)
-		.with_child(
-			column_ui("", || {
-				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
-					.fix_size(36.0, 36.0)
-					.on_click(
-						|ctx: &mut EventCtx, track: &mut Ctx<_, Rc<RefCell<Track>>>, _| {
-							let track_id = track.data.borrow().id;
-							ctx.submit_command(overlay::SHOW_MODAL.with((
-								Color::rgba(1.0, 1.0, 1.0, 0.1),
-								Box::new(move |_| {
-									Container::new(
-										Flex::column()
-											.with_child(Label::new("Delete this track?"))
-											.with_default_spacer()
-											.with_child(
-												Flex::row()
-													.with_child(
-														FocusableButton::new("Cancel")
-															.on_click(move |ctx, _, _| {
-																ctx.submit_command(overlay::HIDE);
-															})
-															.controller(AutoFocus),
-													)
-													.with_default_spacer()
-													.with_child(
-														FocusableButton::new("Delete")
-															.on_click(move |ctx, _, _| {
-																ctx.submit_command(
-																	command::TRACK_DELETE
-																		.with(track_id),
-																);
-																ctx.submit_command(overlay::HIDE);
-															})
-															.env_scope(|env, _| {
-																env.set(
-																	druid::theme::BUTTON_DARK,
-																	Color::RED,
-																)
-															}),
-													),
-											),
-									)
-									.padding(8.0)
-									.background(theme::BACKGROUND)
-									.boxed()
-								}),
-							)));
-						},
-					)
-					.center()
-			})
-			.fix_width(64.0),
-		)
-		.with_default_spacer();
+		.with_child(column_ui("", delete_button).fix_width(64.0))
+		.with_default_spacer()
+		.cross_axis_alignment(CrossAxisAlignment::Start);
 
 	Stack::new()
 		.with_child(
@@ -292,4 +241,51 @@ fn play_track_button() -> impl Widget<Ctx<TrackCtx, Rc<RefCell<Track>>>> {
 			}
 		},
 	)
+}
+
+fn delete_button() -> impl Widget<Ctx<TrackCtx, Rc<RefCell<Track>>>> {
+	Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
+		.fix_size(36.0, 36.0)
+		.on_click(
+			|ctx: &mut EventCtx, track: &mut Ctx<_, Rc<RefCell<Track>>>, _| {
+				let track_id = track.data.borrow().id;
+				ctx.submit_command(overlay::SHOW_MODAL.with((
+					Color::rgba(1.0, 1.0, 1.0, 0.1),
+					Box::new(move |_| {
+						Container::new(
+							Flex::column()
+								.with_child(Label::new("Delete this track?"))
+								.with_default_spacer()
+								.with_child(
+									Flex::row()
+										.with_child(
+											FocusableButton::new("Cancel")
+												.on_click(move |ctx, _, _| {
+													ctx.submit_command(overlay::HIDE);
+												})
+												.controller(AutoFocus),
+										)
+										.with_default_spacer()
+										.with_child(
+											FocusableButton::new("Delete")
+												.on_click(move |ctx, _, _| {
+													ctx.submit_command(
+														command::TRACK_DELETE.with(track_id),
+													);
+													ctx.submit_command(overlay::HIDE);
+												})
+												.env_scope(|env, _| {
+													env.set(druid::theme::BUTTON_DARK, Color::RED)
+												}),
+										),
+								),
+						)
+						.padding(8.0)
+						.background(theme::BACKGROUND)
+						.boxed()
+					}),
+				)));
+			},
+		)
+		.center()
 }
