@@ -1,7 +1,8 @@
 use std::f64::consts::TAU;
 
 use druid::{
-	kurbo::{BezPath, Size},
+	keyboard_types::Key,
+	kurbo::{BezPath, Circle, Size},
 	piet::RenderContext,
 	widget::prelude::*,
 	Affine, Color, Point,
@@ -9,6 +10,7 @@ use druid::{
 use palette::{FromColor, Gradient, IntoColor, Oklch, Srgb};
 
 pub const STEPS: usize = 8;
+use crate::theme;
 
 pub struct Knob {
 	initial_data: f32,
@@ -62,13 +64,27 @@ impl Widget<f32> for Knob {
 				}
 				ctx.set_active(false);
 			}
+			Event::KeyDown(evt) => match evt.key {
+				Key::ArrowDown if evt.mods.ctrl() => *data = 0.0,
+				Key::ArrowUp if evt.mods.ctrl() => *data = 1.0,
+				Key::ArrowDown => *data = (*data - 1.0 / STEPS as f32).max(0.0),
+				Key::ArrowUp => *data = (*data + 1.0 / STEPS as f32).min(1.0),
+				Key::Tab if evt.mods.shift() => ctx.focus_prev(),
+				Key::Tab | Key::Enter => ctx.focus_next(),
+				_ => {}
+			},
 			_ => (),
 		}
 	}
 
 	fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, event: &LifeCycle, _data: &f32, _env: &Env) {
-		if let LifeCycle::HotChanged(_) | LifeCycle::DisabledChanged(_) = event {
-			ctx.request_paint();
+		match event {
+			LifeCycle::HotChanged(_) | LifeCycle::DisabledChanged(_) => {
+				ctx.request_paint();
+			}
+			LifeCycle::BuildFocusChain => ctx.register_for_focus(),
+			LifeCycle::FocusChanged(_) => ctx.request_paint(),
+			_ => (),
 		}
 	}
 
@@ -97,6 +113,14 @@ impl Widget<f32> for Knob {
 		} else {
 			*data as f64
 		};
+
+		if ctx.has_focus() || ctx.is_hot() {
+			ctx.stroke(
+				Circle::new(center, radius),
+				&env.get(theme::FOREGROUND),
+				1.0,
+			);
+		}
 
 		let color = |code: usize| {
 			let color = palette::Srgb::new(

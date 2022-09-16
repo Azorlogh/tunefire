@@ -89,6 +89,9 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::UI_TRACK_EDIT_OPEN) => {
 				let id = cmd.get::<Uuid>(command::UI_TRACK_EDIT_OPEN).unwrap();
 				data.selected_track = Some(Rc::new(*id));
+				if let Some(track_edit) = data.track_edit.take() {
+					self.apply_track_edit(track_edit).unwrap();
+				}
 				if let Ok(track) = self.db.get_track(*id) {
 					data.track_edit = Some(TrackEdit::new(track));
 				}
