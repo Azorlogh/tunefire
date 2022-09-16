@@ -59,6 +59,7 @@ impl AppDelegate<State> for Delegate {
 								.map(RefCell::new)
 								.map(Rc::new)
 								.collect();
+							data.shown_tags = filter.get_tag_set().into_iter().collect();
 						}
 						Err(e) => println!("error while querying {:?}", e),
 					},

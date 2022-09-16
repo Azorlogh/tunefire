@@ -3,23 +3,26 @@ use std::{cell::RefCell, rc::Rc};
 use druid::{
 	lens,
 	widget::{
-		Axis, CrossAxisAlignment, Either, EnvScope, Flex, Label, List, MainAxisAlignment, Painter,
-		SizedBox,
+		Axis, Container, CrossAxisAlignment, Either, EnvScope, Flex, Label, List,
+		MainAxisAlignment, Painter, SizedBox,
 	},
 	Color, Data, EventCtx, Key, Lens, RenderContext, Widget, WidgetExt,
 };
 use tf_db::Track;
 use uuid::Uuid;
 
-use super::{draw_icon_button, ICON_EDIT, ICON_PAUSE, ICON_PLAY};
+use super::{draw_icon_button, ICON_DELETE, ICON_EDIT, ICON_PAUSE, ICON_PLAY};
 use crate::{
 	command,
 	controller::playback::{PLAYER_CLEAR, PLAYER_ENQUEUE, PLAYER_PLAY_PAUSE},
 	data::ctx::Ctx,
 	theme,
 	widget::{
-		common::{knob::Knob, separator::Separator, stack::Stack},
-		controllers::OnHotChange,
+		common::{
+			focusable_button::FocusableButton, knob::Knob, separator::Separator, stack::Stack,
+		},
+		controllers::{AutoFocus, OnHotChange},
+		overlay,
 	},
 	State,
 };
@@ -134,6 +137,59 @@ pub fn ui() -> impl Widget<State> {
 			})
 			.fix_width(64.0),
 		)
+		.with_child(
+			column_ui("", || {
+				Painter::new(|ctx, _, env| draw_icon_button(ctx, env, ICON_DELETE))
+					.fix_size(36.0, 36.0)
+					.on_click(
+						|ctx: &mut EventCtx, track: &mut Ctx<_, Rc<RefCell<Track>>>, _| {
+							let track_id = track.data.borrow().id;
+							ctx.submit_command(overlay::SHOW_MODAL.with((
+								Color::rgba(1.0, 1.0, 1.0, 0.1),
+								Box::new(move |_| {
+									Container::new(
+										Flex::column()
+											.with_child(Label::new("Delete this track?"))
+											.with_default_spacer()
+											.with_child(
+												Flex::row()
+													.with_child(
+														FocusableButton::new("Cancel")
+															.on_click(move |ctx, _, _| {
+																ctx.submit_command(overlay::HIDE);
+															})
+															.controller(AutoFocus),
+													)
+													.with_default_spacer()
+													.with_child(
+														FocusableButton::new("Delete")
+															.on_click(move |ctx, _, _| {
+																ctx.submit_command(
+																	command::TRACK_DELETE
+																		.with(track_id),
+																);
+																ctx.submit_command(overlay::HIDE);
+															})
+															.env_scope(|env, _| {
+																env.set(
+																	druid::theme::BUTTON_DARK,
+																	Color::RED,
+																)
+															}),
+													),
+											),
+									)
+									.padding(8.0)
+									.background(theme::BACKGROUND)
+									.boxed()
+								}),
+							)));
+						},
+					)
+					.center()
+			})
+			.fix_width(64.0),
+		)
 		.with_default_spacer();
 
 	Stack::new()
@@ -174,9 +230,11 @@ pub fn ui() -> impl Widget<State> {
 						State::tracks,
 					)),
 					1.0,
-				),
+				)
+				.fix_height(0.0),
 		)
 		.with_child(table)
+		.fix_height(0.0)
 }
 
 fn column_ui<W>(name: &str, inner: impl Fn() -> W + 'static) -> impl Widget<State>

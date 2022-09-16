@@ -11,17 +11,7 @@ use nom::{
 	IResult,
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Filter {
-	And(Box<Filter>, Box<Filter>),
-	Or(Box<Filter>, Box<Filter>),
-	Not(Box<Filter>),
-	LessThan {
-		tag: String,
-		threshold: f32,
-		inclusive: bool,
-	},
-}
+use super::Filter;
 
 fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
 	inner: F,

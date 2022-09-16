@@ -35,9 +35,7 @@ impl State {
 
 		Ok(Self {
 			tracks,
-			shown_tags: im::Vector::from_iter(
-				["wednesdayairesntariesnt".to_owned(), "dark".to_owned()].into_iter(),
-			),
+			shown_tags: im::Vector::new(),
 			player_state: Rc::new(player::State::default()),
 			queue: im::Vector::new(),
 			history: im::Vector::new(),
