@@ -19,12 +19,6 @@ where
 	F: Fn(&mut LifeCycleCtx, &T, bool, &Env),
 	W: Widget<T>,
 {
-	// fn event(&mut self, child: &mut W, ctx: &mut druid::EventCtx, event: &druid::Event, data: &mut T, env: &Env) {
-	// 	match event {
-	// 		druid::Event::
-	// 	}
-	// }
-
 	fn lifecycle(
 		&mut self,
 		child: &mut W,

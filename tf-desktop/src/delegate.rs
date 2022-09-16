@@ -95,6 +95,7 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::UI_TRACK_EDIT_CLOSE) => {
+				data.selected_track = None;
 				if let Some(track_edit) = data.track_edit.take() {
 					self.apply_track_edit(track_edit).unwrap();
 				}

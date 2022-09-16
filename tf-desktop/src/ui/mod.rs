@@ -111,13 +111,14 @@ fn url_bar() -> impl Widget<State> {
 }
 
 fn play_query_button() -> impl Widget<State> {
-	Painter::new(|ctx, _: &State, env| draw_icon_button(ctx, env, ICON_PLAY))
+	Painter::new(|ctx, _: &State, env| draw_icon_button(ctx, env, ICON_FIRE))
 		.fix_size(36.0, 36.0)
 		.on_click(|ctx: &mut EventCtx, _, _| {
 			ctx.submit_command(command::QUERY_PLAY);
 		})
 }
 
+pub const ICON_FIRE: &str = include_str!("../../assets/fire.svg");
 pub const ICON_PLAY: &str = include_str!("../../assets/play.svg");
 pub const ICON_PAUSE: &str = include_str!("../../assets/pause.svg");
 pub const ICON_PREV: &str = include_str!("../../assets/previous.svg");

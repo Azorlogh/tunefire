@@ -46,16 +46,12 @@ impl<T: Data> Widget<T> for Stack<T> {
 	}
 
 	fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+		let mut size = Size::ZERO;
 		for child in &mut self.children {
-			child.layout(ctx, bc, data, env);
-			child.set_layout_rect(
-				ctx,
-				data,
-				env,
-				Rect::from_origin_size(Point::ORIGIN, bc.max()),
-			)
+			size = child.layout(ctx, bc, data, env);
+			child.set_layout_rect(ctx, data, env, Rect::from_origin_size(Point::ORIGIN, size))
 		}
-		bc.max()
+		size
 	}
 
 	fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {

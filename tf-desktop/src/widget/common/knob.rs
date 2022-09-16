@@ -8,7 +8,7 @@ use druid::{
 };
 use palette::{FromColor, Gradient, IntoColor, Oklch, Srgb};
 
-pub const STEPS: usize = 7;
+pub const STEPS: usize = 8;
 
 pub struct Knob {
 	initial_data: f32,
