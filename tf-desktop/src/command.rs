@@ -17,3 +17,4 @@ pub const TAG_SEARCH: Selector<String> = Selector::new("tag.search");
 // Database editing
 pub const TRACK_ADD: Selector<NewTrack> = Selector::new("track.add");
 pub const TRACK_DELETE: Selector<Uuid> = Selector::new("track.delete");
+pub const TRACK_EDIT_TAG: Selector<(Uuid, String, f32)> = Selector::new("track.edit-tag");

@@ -124,7 +124,7 @@ impl AppDelegate<State> for Delegate {
 					source,
 					artist,
 					title,
-				} = cmd.get::<NewTrack>(command::TRACK_ADD).unwrap();
+				} = cmd.get_unchecked::<NewTrack>(command::TRACK_ADD);
 				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
@@ -137,14 +137,22 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TRACK_DELETE) => {
-				let id = cmd.get::<Uuid>(command::TRACK_DELETE).unwrap();
+				let id = cmd.get_unchecked::<Uuid>(command::TRACK_DELETE);
 				if let Ok(()) = self.db.delete_track(*id) {
 					data.tracks.retain(|track| track.borrow().id != *id);
 				}
 				druid::Handled::Yes
 			}
+			_ if cmd.is(command::TRACK_EDIT_TAG) => {
+				let (track, tag, value) = cmd.get_unchecked(command::TRACK_EDIT_TAG);
+				println!("tag edit!! {track:?} {tag:?} {value:?}");
+				if let Err(e) = self.db.set_tag(*track, tag, *value) {
+					error!("{e}");
+				}
+				druid::Handled::Yes
+			}
 			_ if cmd.is(command::TAG_SEARCH) => {
-				let q = cmd.get::<String>(command::TAG_SEARCH).unwrap();
+				let q = cmd.get_unchecked::<String>(command::TAG_SEARCH);
 				if q != "" {
 					let results = self.db.search_tag(q).unwrap();
 					println!("{:?}", results);

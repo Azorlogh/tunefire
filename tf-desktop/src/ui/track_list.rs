@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use druid::{
 	lens,
@@ -21,7 +21,7 @@ use crate::{
 		common::{
 			focusable_button::FocusableButton, knob::Knob, separator::Separator, stack::Stack,
 		},
-		controllers::{AutoFocus, OnHotChange},
+		controllers::{AutoFocus, OnDebounce, OnHotChange},
 		overlay,
 	},
 	State,
@@ -89,21 +89,51 @@ pub fn ui() -> impl Widget<State> {
 										)
 										.with_child(
 											Knob::new()
-												.lens(lens::Map::new(
-													|s: &Ctx<String, Rc<RefCell<Track>>>| {
-														*s.data
-															.borrow()
-															.tags
-															.get(&s.ctx)
-															.unwrap_or(&0.0)
+												.lens(Ctx::data())
+												.controller(OnDebounce::trailing(
+													Duration::from_secs(1),
+													|ctx,
+													 data: &mut Ctx<(Rc<Uuid>, String), f32>,
+													 _| {
+														// println!("that data changed! {data:?}");
+														ctx.submit_command(
+															command::TRACK_EDIT_TAG.with((
+																*data.ctx.0,
+																data.ctx.1.clone(),
+																data.data,
+															)),
+														);
 													},
-													|s: &mut Ctx<String, Rc<RefCell<Track>>>,
-													 inner: f32| {
-														s.data
-															.borrow_mut()
-															.tags
-															.insert(s.ctx.clone(), inner);
-													},
+												))
+												.lens(Ctx::make(
+													lens::Map::new(
+														|s: &Ctx<String, Rc<RefCell<Track>>>| {
+															(
+																Rc::new(s.data.borrow().id),
+																s.ctx.clone(),
+															)
+														},
+														|_, _| {},
+													),
+													lens::Map::new(
+														|s: &Ctx<String, Rc<RefCell<Track>>>| {
+															*s.data
+																.borrow()
+																.tags
+																.get(&s.ctx)
+																.unwrap_or(&0.0)
+														},
+														|s: &mut Ctx<
+															String,
+															Rc<RefCell<Track>>,
+														>,
+														 inner: f32| {
+															s.data
+																.borrow_mut()
+																.tags
+																.insert(s.ctx.clone(), inner);
+														},
+													),
 												))
 												.fix_width(TRACK_HEIGHT)
 												.fix_height(TRACK_HEIGHT)

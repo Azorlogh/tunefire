@@ -23,7 +23,7 @@ impl<T> OnDebounce<T> {
 
 impl<T, W> Controller<T, W> for OnDebounce<T>
 where
-	T: Data,
+	T: Data + std::fmt::Debug,
 	W: Widget<T>,
 {
 	fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
