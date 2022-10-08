@@ -1,12 +1,11 @@
-use std::{rc::Rc, time::Duration};
+use std::time::Duration;
 
 use druid::{
 	widget::{EnvScope, Flex, Label, List, Maybe, SizedBox, Tabs, TabsTransition},
 	Insets, Widget, WidgetExt,
 };
-use tf_db::Track;
 
-use crate::{theme, State};
+use crate::{state::Track, theme, State};
 
 pub fn ui() -> impl Widget<State> {
 	Tabs::new()
@@ -21,17 +20,17 @@ pub fn ui() -> impl Widget<State> {
 		.with_tab("History", List::new(track_ui).lens(State::history))
 }
 
-fn track_ui() -> impl Widget<Rc<Track>> {
+fn track_ui() -> impl Widget<Track> {
 	Flex::column()
 		.with_child(
-			Label::new(|track: &Rc<Track>, _: &_| track.title.to_owned())
+			Label::new(|track: &Track, _: &_| track.title.to_owned())
 				.with_text_size(16.0)
 				.fix_height(18.0)
 				.expand_width(),
 		)
 		.with_child(EnvScope::new(
 			|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
-			Label::new(|item: &Rc<Track>, _: &_| item.artist.to_owned())
+			Label::new(|item: &Track, _: &_| item.artist.to_owned())
 				.with_text_size(13.0)
 				.fix_height(10.0)
 				.expand_width(),

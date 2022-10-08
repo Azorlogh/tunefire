@@ -1,24 +1,23 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use anyhow::Result;
-use druid::{im, Data, Lens};
-use tf_db::Track;
+use druid::{im, ArcStr, Data, Lens};
 use tf_player::player;
 use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
-	pub tracks: im::Vector<Rc<RefCell<Track>>>,
+	pub tracks: im::Vector<Track>,
 	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
-	pub queue: im::Vector<Rc<Track>>,
-	pub history: im::Vector<Rc<Track>>,
+	pub queue: im::Vector<Track>,
+	pub history: im::Vector<Track>,
 	pub query: String,
 	pub new_track: Option<NewTrack>,
 	pub new_track_url: String,
 	pub track_edit: Option<TrackEdit>,
-	pub current_track: Option<Rc<Track>>,
+	pub current_track: Option<Track>,
 	pub selected_track: Option<Rc<Uuid>>,
 	pub volume: f64,
 }
@@ -29,8 +28,7 @@ impl State {
 			.list_filtered(&"".parse::<tf_db::Filter>().unwrap())?
 			.iter()
 			.cloned()
-			.map(RefCell::new)
-			.map(Rc::new)
+			.map(Into::into)
 			.collect();
 
 		Ok(Self {
@@ -47,6 +45,29 @@ impl State {
 			selected_track: None,
 			volume: 1.0,
 		})
+	}
+}
+
+#[derive(Clone, Data, Lens)]
+pub struct Track {
+	pub id: Rc<Uuid>,
+	pub source: ArcStr,
+	pub title: ArcStr,
+	pub artist: ArcStr,
+	pub tags: im::HashMap<ArcStr, f32>,
+}
+
+impl From<tf_db::Track> for Track {
+	fn from(t: tf_db::Track) -> Self {
+		Self {
+			id: Rc::new(t.id),
+			source: t.source.into(),
+			title: t.title.into(),
+			artist: t.artist.into(),
+			tags: im::HashMap::from_iter(
+				t.tags.iter().map(|(k, &v)| (ArcStr::from(k.to_owned()), v)),
+			),
+		}
 	}
 }
 
@@ -73,7 +94,7 @@ pub struct TagSuggestions {
 }
 
 impl TrackEdit {
-	pub fn new(track: Track) -> Self {
+	pub fn new(track: tf_db::Track) -> Self {
 		Self {
 			id: Rc::new(track.id),
 			title: track.title,

@@ -6,11 +6,10 @@ use druid::{
 	widget::Controller, Env, Event, EventCtx, ExtEventSink, LifeCycle, LifeCycleCtx, Selector,
 	Widget,
 };
-use tf_db::Track;
 use tf_player::player::{self};
 use url::Url;
 
-use crate::{media_controls::MediaControls, State};
+use crate::{media_controls::MediaControls, state::Track, State};
 
 pub const PLAYER_CLEAR: Selector = Selector::new("player.clear");
 pub const PLAYER_ENQUEUE: Selector<Track> = Selector::new("player.enqueue");
@@ -55,7 +54,7 @@ impl PlaybackController {
 		self.player
 			.queue_track(Url::parse(&track.source).unwrap())
 			.unwrap();
-		data.current_track = Some(Rc::new(track.clone()));
+		data.current_track = Some(track.clone());
 		self.update_media_controls(data);
 		self.play();
 	}

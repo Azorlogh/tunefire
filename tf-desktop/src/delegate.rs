@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use anyhow::Result;
 use druid::AppDelegate;
@@ -53,12 +53,7 @@ impl AppDelegate<State> for Delegate {
 				match data.query.parse::<tf_db::Filter>() {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
-							data.tracks = tracks
-								.iter()
-								.cloned()
-								.map(RefCell::new)
-								.map(Rc::new)
-								.collect();
+							data.tracks = tracks.iter().cloned().map(Into::into).collect();
 							data.shown_tags = filter.get_tag_set().into_iter().collect();
 						}
 						Err(e) => println!("error while querying {:?}", e),
@@ -72,10 +67,10 @@ impl AppDelegate<State> for Delegate {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
 							ctx.submit_command(playback::PLAYER_CLEAR);
-							data.queue = tracks.iter().cloned().map(Rc::new).collect();
+							data.queue = tracks.iter().cloned().map(Into::into).collect();
 							ctx.submit_command(
 								playback::PLAYER_ENQUEUE
-									.with((*data.queue.pop_front().unwrap()).clone()),
+									.with((data.queue.pop_front().unwrap()).clone()),
 							);
 						}
 						Err(e) => println!("error while querying {:?}", e),
@@ -128,7 +123,7 @@ impl AppDelegate<State> for Delegate {
 				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
-						data.tracks.push_back(Rc::new(RefCell::new(track)));
+						data.tracks.push_back(track.into());
 						data.new_track_url = String::new();
 						data.new_track = None;
 					}
@@ -139,13 +134,12 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::TRACK_DELETE) => {
 				let id = cmd.get_unchecked::<Uuid>(command::TRACK_DELETE);
 				if let Ok(()) = self.db.delete_track(*id) {
-					data.tracks.retain(|track| track.borrow().id != *id);
+					data.tracks.retain(|track| *track.id != *id);
 				}
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TRACK_EDIT_TAG) => {
 				let (track, tag, value) = cmd.get_unchecked(command::TRACK_EDIT_TAG);
-				println!("tag edit!! {track:?} {tag:?} {value:?}");
 				if let Err(e) = self.db.set_tag(*track, tag, *value) {
 					error!("{e}");
 				}
@@ -155,7 +149,6 @@ impl AppDelegate<State> for Delegate {
 				let q = cmd.get_unchecked::<String>(command::TAG_SEARCH);
 				if q != "" {
 					let results = self.db.search_tag(q).unwrap();
-					println!("{:?}", results);
 					data.track_edit.as_mut().unwrap().tag_suggestions.tags = results.into();
 				}
 				druid::Handled::Yes

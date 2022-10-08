@@ -219,9 +219,7 @@ impl Client {
 
 	// Apply the filter to the list of tracks.
 	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Track>> {
-		println!("list filtered {:?}", filter);
 		let view_id = self.view_filtered(filter)?;
-		println!("obtained view id {:?}", view_id);
 		let mut stmt = self.conn.prepare(&format!(
 			r#"
 				SELECT id, source, artist, title
