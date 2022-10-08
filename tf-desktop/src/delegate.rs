@@ -53,7 +53,8 @@ impl AppDelegate<State> for Delegate {
 				match data.query.parse::<tf_db::Filter>() {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
-							data.tracks = tracks.iter().cloned().map(Rc::new).collect();
+							data.tracks = tracks.iter().cloned().map(Into::into).collect();
+							data.shown_tags = filter.get_tag_set().into_iter().collect();
 						}
 						Err(e) => println!("error while querying {:?}", e),
 					},
@@ -66,9 +67,10 @@ impl AppDelegate<State> for Delegate {
 					Ok(filter) => match self.db.list_filtered(&filter) {
 						Ok(tracks) => {
 							ctx.submit_command(playback::PLAYER_CLEAR);
-							data.queue = tracks.iter().cloned().map(Rc::new).collect();
+							data.queue = tracks.iter().cloned().map(Into::into).collect();
 							ctx.submit_command(
-								playback::PLAYER_ENQUEUE.with(data.queue.pop_front().unwrap()),
+								playback::PLAYER_ENQUEUE
+									.with((data.queue.pop_front().unwrap()).clone()),
 							);
 						}
 						Err(e) => println!("error while querying {:?}", e),
@@ -91,6 +93,7 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::UI_TRACK_EDIT_CLOSE) => {
+				data.selected_track = None;
 				if let Some(track_edit) = data.track_edit.take() {
 					self.apply_track_edit(track_edit).unwrap();
 				}
@@ -116,11 +119,11 @@ impl AppDelegate<State> for Delegate {
 					source,
 					artist,
 					title,
-				} = cmd.get::<NewTrack>(command::TRACK_ADD).unwrap();
+				} = cmd.get_unchecked::<NewTrack>(command::TRACK_ADD);
 				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
-						data.tracks.push_back(Rc::new(track));
+						data.tracks.push_back(track.into());
 						data.new_track_url = String::new();
 						data.new_track = None;
 					}
@@ -129,17 +132,23 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TRACK_DELETE) => {
-				let id = cmd.get::<Uuid>(command::TRACK_DELETE).unwrap();
+				let id = cmd.get_unchecked::<Uuid>(command::TRACK_DELETE);
 				if let Ok(()) = self.db.delete_track(*id) {
-					data.tracks.retain(|track| track.id != *id);
+					data.tracks.retain(|track| *track.id != *id);
+				}
+				druid::Handled::Yes
+			}
+			_ if cmd.is(command::TRACK_EDIT_TAG) => {
+				let (track, tag, value) = cmd.get_unchecked(command::TRACK_EDIT_TAG);
+				if let Err(e) = self.db.set_tag(*track, tag, *value) {
+					error!("{e}");
 				}
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::TAG_SEARCH) => {
-				let q = cmd.get::<String>(command::TAG_SEARCH).unwrap();
+				let q = cmd.get_unchecked::<String>(command::TAG_SEARCH);
 				if q != "" {
 					let results = self.db.search_tag(q).unwrap();
-					println!("{:?}", results);
 					data.track_edit.as_mut().unwrap().tag_suggestions.tags = results.into();
 				}
 				druid::Handled::Yes

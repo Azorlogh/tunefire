@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::{anyhow, Result};
 use rusqlite::params;
@@ -66,22 +66,7 @@ impl Client {
 		Ok(())
 	}
 
-	pub fn get_track(&self, id: Uuid) -> Result<Track> {
-		let mut stmt = self
-			.conn
-			.prepare("SELECT id, source, artist, title FROM tracks WHERE id = ?")?;
-		let mut track = stmt
-			.query_row(&[&id.to_string()], |row| {
-				Ok(Track {
-					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
-					source: row.get(1)?,
-					artist: row.get(2)?,
-					title: row.get(3)?,
-					tags: vec![],
-				})
-			})
-			.map_err(|e| anyhow!("failed to get track: {}", e))?;
-
+	pub fn get_track_tags(&self, id: Uuid) -> Result<HashMap<String, f32>> {
 		let mut stmt = self.conn.prepare(
 			r#"
 			SELECT name, "value"
@@ -95,9 +80,30 @@ impl Client {
 		let tags = stmt
 			.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
 			.unwrap();
-		for tag in tags {
-			track.tags.push(tag.unwrap());
+		let mut result = HashMap::new();
+		for tag in tags.into_iter() {
+			let (name, value) = tag.unwrap();
+			result.insert(name, value);
 		}
+		Ok(result)
+	}
+
+	pub fn get_track(&self, id: Uuid) -> Result<Track> {
+		let mut stmt = self
+			.conn
+			.prepare("SELECT id, source, artist, title FROM tracks WHERE id = ?")?;
+		let mut track = stmt
+			.query_row(&[&id.to_string()], |row| {
+				Ok(Track {
+					id: Uuid::try_parse(&row.get::<_, String>(0)?).unwrap(),
+					source: row.get(1)?,
+					artist: row.get(2)?,
+					title: row.get(3)?,
+					tags: HashMap::new(),
+				})
+			})
+			.map_err(|e| anyhow!("failed to get track: {}", e))?;
+		track.tags = self.get_track_tags(track.id)?;
 
 		Ok(track)
 	}
@@ -123,7 +129,7 @@ impl Client {
 					source: row.get(1)?,
 					artist: row.get(2)?,
 					title: row.get(3)?,
-					tags: vec![],
+					tags: HashMap::new(),
 				})
 			})?
 			.collect::<Result<Vec<Track>, _>>()
@@ -213,9 +219,7 @@ impl Client {
 
 	// Apply the filter to the list of tracks.
 	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Track>> {
-		println!("list filtered {:?}", filter);
 		let view_id = self.view_filtered(filter)?;
-		println!("obtained view id {:?}", view_id);
 		let mut stmt = self.conn.prepare(&format!(
 			r#"
 				SELECT id, source, artist, title
@@ -230,9 +234,15 @@ impl Client {
 					source: row.get(1)?,
 					artist: row.get(2)?,
 					title: row.get(3)?,
-					tags: vec![],
+					tags: HashMap::new(),
 				})
 			})?
+			.map(|result| {
+				result.map(|mut track| {
+					track.tags = self.get_track_tags(track.id).unwrap();
+					track
+				})
+			})
 			.collect::<Result<Vec<Track>, _>>()
 			.map_err(|e| anyhow!("failed list tracks: {}", e))?;
 

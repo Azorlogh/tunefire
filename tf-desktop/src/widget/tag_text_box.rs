@@ -2,7 +2,7 @@ use druid::{
 	keyboard_types::Key,
 	lens,
 	widget::{Container, EnvScope, Label, List, TextBox},
-	Color, Data, Env, Event, Widget, WidgetExt, WidgetPod,
+	Color, Data, Env, Event, Point, Widget, WidgetExt, WidgetPod,
 };
 
 use super::{
@@ -133,7 +133,9 @@ impl Widget<WData> for TagTextBox {
 		data: &WData,
 		env: &druid::Env,
 	) -> druid::Size {
-		self.inner.layout(ctx, bc, data, env)
+		let size = self.inner.layout(ctx, bc, data, env);
+		self.inner.set_origin(ctx, data, env, Point::ORIGIN);
+		size
 	}
 
 	fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &WData, env: &druid::Env) {

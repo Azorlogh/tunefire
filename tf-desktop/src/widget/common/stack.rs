@@ -46,21 +46,36 @@ impl<T: Data> Widget<T> for Stack<T> {
 	}
 
 	fn layout(&mut self, ctx: &mut LayoutCtx, bc: &BoxConstraints, data: &T, env: &Env) -> Size {
+		let mut size = Size::ZERO;
 		for child in &mut self.children {
-			child.layout(ctx, bc, data, env);
-			child.set_layout_rect(
-				ctx,
-				data,
-				env,
-				Rect::from_origin_size(Point::ORIGIN, bc.max()),
-			)
+			size = child.layout(ctx, bc, data, env);
+			child.set_layout_rect(ctx, data, env, Rect::from_origin_size(Point::ORIGIN, size))
 		}
-		bc.max()
+		size
 	}
 
 	fn paint(&mut self, ctx: &mut PaintCtx, data: &T, env: &Env) {
 		for child in &mut self.children {
 			child.paint(ctx, data, env);
 		}
+	}
+
+	fn compute_max_intrinsic(
+		&mut self,
+		axis: druid::widget::Axis,
+		ctx: &mut LayoutCtx,
+		bc: &BoxConstraints,
+		data: &T,
+		env: &Env,
+	) -> f64 {
+		let mut max = 0f64;
+		for child in &mut self.children {
+			max = max.max(
+				child
+					.widget_mut()
+					.compute_max_intrinsic(axis, ctx, bc, data, env),
+			)
+		}
+		max
 	}
 }

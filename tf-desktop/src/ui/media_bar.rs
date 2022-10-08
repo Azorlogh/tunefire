@@ -4,12 +4,12 @@ use druid::{
 	widget::{Button, Container, Flex, Label, Maybe, Painter, SizedBox, Slider},
 	BoxConstraints, Data, EventCtx, Lens, Size, Widget, WidgetExt,
 };
-use tf_db::Track;
 use tf_player::player::state::Playing;
 
 use super::{draw_icon_button, ICON_NEXT, ICON_PAUSE, ICON_PLAY, ICON_PREV};
 use crate::{
 	controller::playback,
+	state::Track,
 	theme,
 	widget::{controllers::OnDebounce, overlay, player_bar::PlayerBar},
 };
@@ -17,7 +17,7 @@ use crate::{
 #[derive(Clone, Data, Lens)]
 pub struct MediaBarState {
 	pub playing: Rc<Playing>,
-	pub current_track: Option<Rc<Track>>,
+	pub current_track: Option<Track>,
 	pub volume: f64,
 }
 
@@ -57,7 +57,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 		));
 
 	let track_info = Maybe::new(
-		|| Label::new(|data: &Rc<Track>, _: &_| format!("{} - {}", data.artist, data.title)),
+		|| Label::new(|data: &Track, _: &_| format!("{} - {}", data.artist, data.title)),
 		|| SizedBox::empty(),
 	)
 	.expand_width();
