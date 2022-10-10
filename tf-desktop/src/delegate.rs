@@ -8,17 +8,22 @@ use uuid::Uuid;
 use crate::{
 	command,
 	controller::playback,
+	plugins::{self, Plugin},
 	state::{NewTrack, TrackEdit},
 	State,
 };
 
 pub struct Delegate {
 	db: tf_db::Client,
+	plugins: Vec<Box<dyn Plugin>>,
 }
 
 impl Delegate {
 	pub fn new(db: tf_db::Client) -> Result<Self> {
-		Ok(Self { db })
+		Ok(Self {
+			db,
+			plugins: vec![Box::new(plugins::Soundcloud::new()?)],
+		})
 	}
 
 	fn apply_track_edit(&mut self, edit: TrackEdit) -> Result<()> {
@@ -124,7 +129,7 @@ impl AppDelegate<State> for Delegate {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
 						data.tracks.push_back(track.into());
-						data.new_track_url = String::new();
+						data.new_track_search = String::new();
 						data.new_track = None;
 					}
 					Err(e) => error!("{:?}", e),
@@ -150,6 +155,16 @@ impl AppDelegate<State> for Delegate {
 				if q != "" {
 					let results = self.db.search_tag(q).unwrap();
 					data.track_edit.as_mut().unwrap().tag_suggestions.tags = results.into();
+				}
+				druid::Handled::Yes
+			}
+			_ if cmd.is(command::PLUGIN_SEARCH_TRACK) => {
+				let q = cmd.get_unchecked::<String>(command::PLUGIN_SEARCH_TRACK);
+				let mut results = vec![];
+				for plugin in &self.plugins {
+					if let Ok(r) = plugin.search(q) {
+						results.extend(r);
+					}
 				}
 				druid::Handled::Yes
 			}

@@ -24,7 +24,8 @@ pub struct State {
 	pub history: im::Vector<Track>,
 	pub query: String,
 	pub new_track: Option<NewTrack>,
-	pub new_track_url: String,
+	pub new_track_search: String,
+	pub track_search_results: TrackSuggestions,
 	pub track_edit: Option<TrackEdit>,
 	pub current_track: Option<Track>,
 	pub selected_track: Option<Rc<Uuid>>,
@@ -48,11 +49,21 @@ impl State {
 			history: im::Vector::new(),
 			query: String::new(),
 			new_track: None,
-			new_track_url: String::new(),
+			new_track_search: String::new(),
+			track_search_results: TrackSuggestions {
+				tags: im::Vector::new(),
+				selected: 0,
+			},
 			track_edit: None,
 			current_track: None,
 			selected_track: None,
 			volume: 1.0,
 		})
 	}
+}
+
+#[derive(Clone, Data, Lens, Debug)]
+pub struct TrackSuggestions {
+	pub tags: im::Vector<String>,
+	pub selected: usize,
 }

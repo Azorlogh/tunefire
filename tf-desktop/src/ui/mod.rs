@@ -107,7 +107,7 @@ fn url_bar() -> impl Widget<State> {
 		}),
 	)
 	.expand_width()
-	.lens(State::new_track_url)
+	.lens(State::new_track_search)
 }
 
 fn play_query_button() -> impl Widget<State> {
