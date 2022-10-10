@@ -125,6 +125,7 @@ pub const ICON_PREV: &str = include_str!("../../assets/previous.svg");
 pub const ICON_NEXT: &str = include_str!("../../assets/next.svg");
 pub const ICON_EDIT: &str = include_str!("../../assets/edit.svg");
 pub const ICON_DELETE: &str = include_str!("../../assets/delete.svg");
+pub const _ICON_SETTINGS: &str = include_str!("../../assets/settings.svg");
 
 pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 	let size = ctx.size();
