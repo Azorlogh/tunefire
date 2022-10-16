@@ -1,4 +1,5 @@
 pub mod dropdown;
+pub mod dynamic_image;
 pub mod focusable;
 pub mod focusable_button;
 pub mod hidden_if;

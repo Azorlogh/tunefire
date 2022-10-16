@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use druid::AppDelegate;
-use tracing::error;
+use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -160,10 +160,14 @@ impl AppDelegate<State> for Delegate {
 			}
 			_ if cmd.is(command::PLUGIN_SEARCH_TRACK) => {
 				let q = cmd.get_unchecked::<String>(command::PLUGIN_SEARCH_TRACK);
-				let mut results = vec![];
+				// let mut results = im::Vector::new();
+				data.track_search_results.tracks.clear();
 				for plugin in &self.plugins {
-					if let Ok(r) = plugin.search(q) {
-						results.extend(r);
+					match plugin.search(q) {
+						Ok(r) => {
+							data.track_search_results.tracks.extend(r);
+						}
+						Err(e) => warn!("{:?}", e),
 					}
 				}
 				druid::Handled::Yes

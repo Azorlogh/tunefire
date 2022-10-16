@@ -14,6 +14,8 @@ pub use track_edit::{TagSuggestions, TrackEdit};
 mod track_new;
 pub use track_new::NewTrack;
 
+use crate::plugins::SearchResult;
+
 #[derive(Clone, Data, Lens)]
 pub struct State {
 	pub tracks: im::Vector<Track>,
@@ -51,7 +53,7 @@ impl State {
 			new_track: None,
 			new_track_search: String::new(),
 			track_search_results: TrackSuggestions {
-				tags: im::Vector::new(),
+				tracks: im::Vector::new(),
 				selected: 0,
 			},
 			track_edit: None,
@@ -64,6 +66,6 @@ impl State {
 
 #[derive(Clone, Data, Lens, Debug)]
 pub struct TrackSuggestions {
-	pub tags: im::Vector<String>,
+	pub tracks: im::Vector<SearchResult>,
 	pub selected: usize,
 }

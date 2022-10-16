@@ -7,11 +7,16 @@ pub struct SearchResponse {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct SearchResult {
-	pub permalink_url: Url,
-	pub user: User,
-	pub title: String,
-	pub artwork_url: Url,
+#[serde(rename_all = "snake_case")]
+#[serde(tag = "kind")]
+pub enum SearchResult {
+	Track {
+		permalink_url: Url,
+		user: User,
+		title: String,
+		artwork_url: Url,
+	},
+	User,
 }
 
 #[derive(Deserialize, Serialize)]

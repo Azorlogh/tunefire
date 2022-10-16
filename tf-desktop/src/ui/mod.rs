@@ -4,7 +4,7 @@ use druid::{
 	keyboard_types::Key,
 	kurbo::{BezPath, Circle},
 	lens::Map,
-	widget::{ControllerHost, Flex, Label, Maybe, Painter, Scroll, SizedBox, TextBox},
+	widget::{ControllerHost, Flex, Label, List, Maybe, Painter, Scroll, SizedBox, TextBox},
 	Affine, Env, EventCtx, PaintCtx, RenderContext, TextAlignment, Vec2, Widget, WidgetExt,
 };
 use tf_player::player;
@@ -13,8 +13,16 @@ use self::media_bar::MediaBarState;
 use crate::{
 	command,
 	controller::playback::PlaybackController,
+	data::ctx::Ctx,
+	plugins::SearchResult,
+	state::TrackSuggestions,
 	theme,
-	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay},
+	widget::{
+		common::{dynamic_image::DynamicImage, stack::Stack},
+		controllers::OnKey,
+		overlay::Overlay,
+		search_bar::SearchBar,
+	},
 	State,
 };
 
@@ -41,6 +49,7 @@ pub fn ui() -> impl Widget<State> {
 	root.add_flex_child(main_view, 1.0);
 	root.add_default_spacer();
 	root.add_child(url_bar());
+	// root.add_child(track_suggestions());
 	root.add_default_spacer();
 	root.add_child(
 		Maybe::new(|| media_bar::ui(), || SizedBox::empty()).lens(Map::new(
@@ -100,14 +109,19 @@ fn query_box() -> impl Widget<State> {
 }
 
 fn url_bar() -> impl Widget<State> {
-	ControllerHost::new(
-		TextBox::new().with_placeholder("Source"),
-		OnKey::new(Key::Enter, |ctx, data: &mut String, _| {
-			ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
-		}),
-	)
-	.expand_width()
-	.lens(State::new_track_search)
+	// ControllerHost::new(
+	// 	TextBox::new().with_placeholder("Source"),
+	// 	OnKey::new(Key::Enter, |ctx, data: &mut String, _| {
+	// 		ctx.submit_command(command::PLUGIN_SEARCH_TRACK.with(data.to_owned()));
+	// 		// ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
+	// 	}),
+	// )
+	// .expand_width()
+	// .lens(State::new_track_search)
+	SearchBar::new().lens(Ctx::make(
+		State::track_search_results,
+		State::new_track_search,
+	))
 }
 
 fn play_query_button() -> impl Widget<State> {

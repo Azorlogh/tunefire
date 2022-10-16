@@ -1,4 +1,7 @@
+use std::{rc::Rc, sync::Arc};
+
 use anyhow::{anyhow, Result};
+use druid::piet::ImageFormat;
 use percent_encoding::{AsciiSet, CONTROLS};
 use tracing::debug;
 
@@ -42,23 +45,51 @@ const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').ad
 impl Plugin for Soundcloud {
 	fn search(&self, query: &str) -> Result<Vec<super::SearchResult>> {
 		let query_enc = percent_encoding::utf8_percent_encode(query, FRAGMENT);
-		let response: api::SearchResponse = serde_json::from_str(
-			&ureq::get(&format!(
-				"https://api-v2.soundcloud.com/search?client_id={}&q={}&limit=10&offset=0&linked_partitioning=1&app_version=1665395834&app_locale=en",
-				self.client_id, query_enc
-			))
-			.call()?
-			.into_string()?,
-		)?;
+		let response_json = ureq::get(&format!(
+			"https://api-v2.soundcloud.com/search?client_id={}&q={}&limit=10&offset=0&linked_partitioning=1&app_version=1665395834&app_locale=en",
+			self.client_id, query_enc
+		))
+		.call()?
+		.into_string()?;
+		let response: api::SearchResponse = serde_json::from_str(&response_json)?;
 
 		Ok(response
 			.collection
 			.into_iter()
-			.map(|res| super::SearchResult {
-				url: res.permalink_url,
-				artist: res.user.username,
-				title: res.title,
-				artwork: res.artwork_url,
+			.filter_map(|res| match res {
+				api::SearchResult::Track {
+					permalink_url,
+					user,
+					title,
+					artwork_url,
+				} => {
+					let mut artwork_buf = vec![];
+					ureq::get(artwork_url.as_str())
+						.call()
+						.ok()?
+						.into_reader()
+						.read_to_end(&mut artwork_buf)
+						.ok()?;
+					let artwork_image = image::io::Reader::new(std::io::Cursor::new(artwork_buf))
+						.with_guessed_format()
+						.ok()?
+						.decode()
+						.ok()?
+						.to_rgb8();
+					let artwork_imagebuf = druid::ImageBuf::from_raw(
+						artwork_image.as_raw().as_slice(),
+						ImageFormat::Rgb,
+						artwork_image.width() as usize,
+						artwork_image.height() as usize,
+					);
+					Some(super::SearchResult {
+						url: Rc::new(permalink_url),
+						artist: user.username,
+						title,
+						artwork: artwork_imagebuf,
+					})
+				}
+				_ => None,
 			})
 			.collect())
 	}
