@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use druid::{
 	keyboard_types::Key,
-	lens,
-	widget::{Container, EnvScope, Flex, Label, List, TextBox},
+	lens::{self, Field},
+	widget::{Flex, Label, List, TextBox},
 	Color, Data, Env, Event, Point, TimerToken, Widget, WidgetExt, WidgetPod,
 };
 
@@ -18,8 +18,8 @@ use crate::{
 	command,
 	data::ctx::Ctx,
 	plugins::SearchResult,
-	state::{TagSuggestions, TrackSuggestions},
-	theme, State,
+	state::{NewTrack, TrackSuggestions},
+	theme,
 };
 
 const SUGGESTION_BACKGROUND: druid::Key<Color> = druid::Key::new("widget.suggestion.background");
@@ -39,6 +39,7 @@ impl SearchBar {
 					TextBox::new().controller(AutoFocus).lens(Ctx::data()),
 					|_, _| track_suggestions().lens(Ctx::ctx()),
 				)
+				.expand_width()
 				.boxed(),
 			),
 			search_timer: TimerToken::INVALID,
@@ -70,9 +71,24 @@ impl Widget<WData> for SearchBar {
 			}
 			Event::KeyDown(event) if event.key == Key::Enter => {
 				let suggestions = std::mem::take(&mut data.ctx.tracks);
-				// if let Some(track) = suggestions.into_iter().nth(data.ctx.selected) {
-				// 	data.data = track;
-				// }
+				if let Some(track) = data
+					.ctx
+					.selected
+					.checked_sub(1)
+					.and_then(|i| suggestions.into_iter().nth(i))
+				{
+					ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(NewTrack {
+						source: track.url.to_string(),
+						artist: track.artist,
+						title: track.title,
+					}));
+				} else {
+					ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(NewTrack {
+						source: data.data.to_owned(),
+						artist: String::new(),
+						title: String::new(),
+					}));
+				}
 				ctx.focus_next();
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
@@ -105,7 +121,6 @@ impl Widget<WData> for SearchBar {
 	) {
 		self.inner.update(ctx, data, env);
 		if !old_data.ctx.same(&data.ctx) {
-			println!("{:?}", data.ctx.tracks);
 			if data.ctx.tracks.is_empty() {
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			} else {
@@ -141,17 +156,35 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 				DynamicImage::new()
 					.fix_width(24.0)
 					.fix_height(24.0)
-					.lens(SearchResult::artwork),
+					.lens(SearchResult::artwork)
+					.lens(Field::new(|x: &(_, _)| &x.1, |x| &mut x.1))
+					.lens(Ctx::data()),
 			)
 			.with_child(Label::new(
-				|data: &Ctx<usize, (usize, SearchResult)>, _: &_| {
+				|data: &Ctx<Option<usize>, (usize, SearchResult)>, _: &_| {
 					format!("{} - {}", data.data.1.artist, data.data.1.title)
 				},
 			))
+			.background(SUGGESTION_BACKGROUND)
+			.env_scope(
+				|env: &mut Env, state: &Ctx<Option<usize>, (usize, SearchResult)>| {
+					env.set(
+						SUGGESTION_BACKGROUND,
+						if state.ctx == Some(state.data.0) {
+							env.get(theme::BACKGROUND_HIGHLIGHT1)
+						} else {
+							Color::TRANSPARENT
+						},
+					)
+				},
+			)
 	})
 	.lens(Ctx::enumerate())
 	.lens(Ctx::make(
-		lens::Map::new(|s: &TrackSuggestions| s.selected, |_, _| {}),
+		lens::Map::new(
+			|s: &TrackSuggestions| s.selected.checked_sub(1),
+			|_: &mut _, _| {},
+		),
 		TrackSuggestions::tracks,
 	))
 }

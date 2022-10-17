@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
 use druid::{
 	widget::Image, BoxConstraints, Data, Env, Event, EventCtx, ImageBuf, LayoutCtx, LifeCycle,
-	LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget, WidgetId,
+	LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget,
 };
 
 pub struct DynamicImage {

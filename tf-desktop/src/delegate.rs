@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	command,
 	controller::playback,
-	plugins::{self, Plugin},
+	plugins::{self, Plugin, SearchResult},
 	state::{NewTrack, TrackEdit},
 	State,
 };
@@ -105,12 +105,8 @@ impl AppDelegate<State> for Delegate {
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::UI_TRACK_ADD_OPEN) => {
-				let source = cmd.get::<String>(command::UI_TRACK_ADD_OPEN).unwrap();
-				data.new_track = Some(NewTrack {
-					source: source.clone(),
-					title: String::new(),
-					artist: String::new(),
-				});
+				let new_track = cmd.get_unchecked::<_>(command::UI_TRACK_ADD_OPEN);
+				data.new_track = Some(new_track.clone());
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::UI_TRACK_ADD_CLOSE) => {
@@ -160,7 +156,6 @@ impl AppDelegate<State> for Delegate {
 			}
 			_ if cmd.is(command::PLUGIN_SEARCH_TRACK) => {
 				let q = cmd.get_unchecked::<String>(command::PLUGIN_SEARCH_TRACK);
-				// let mut results = im::Vector::new();
 				data.track_search_results.tracks.clear();
 				for plugin in &self.plugins {
 					match plugin.search(q) {
@@ -172,6 +167,11 @@ impl AppDelegate<State> for Delegate {
 				}
 				druid::Handled::Yes
 			}
+			// _ if cmd.is(command::TRACK_SUGGESTION_SELECT) => {
+			// 	let search_result =
+			// 		cmd.get_unchecked::<SearchResult>(command::TRACK_SUGGESTION_SELECT);
+
+			// }
 			_ => druid::Handled::No,
 		}
 	}

@@ -109,15 +109,6 @@ fn query_box() -> impl Widget<State> {
 }
 
 fn url_bar() -> impl Widget<State> {
-	// ControllerHost::new(
-	// 	TextBox::new().with_placeholder("Source"),
-	// 	OnKey::new(Key::Enter, |ctx, data: &mut String, _| {
-	// 		ctx.submit_command(command::PLUGIN_SEARCH_TRACK.with(data.to_owned()));
-	// 		// ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
-	// 	}),
-	// )
-	// .expand_width()
-	// .lens(State::new_track_search)
 	SearchBar::new().lens(Ctx::make(
 		State::track_search_results,
 		State::new_track_search,
