@@ -4,7 +4,7 @@ use druid::{
 	keyboard_types::Key,
 	kurbo::{BezPath, Circle},
 	lens::Map,
-	widget::{ControllerHost, Flex, Label, List, Maybe, Painter, Scroll, SizedBox, TextBox},
+	widget::{ControllerHost, Flex, Label, Maybe, Painter, Scroll, SizedBox, TextBox},
 	Affine, Env, EventCtx, PaintCtx, RenderContext, TextAlignment, Vec2, Widget, WidgetExt,
 };
 use tf_player::player;
@@ -14,15 +14,8 @@ use crate::{
 	command,
 	controller::playback::PlaybackController,
 	data::ctx::Ctx,
-	plugins::SearchResult,
-	state::TrackSuggestions,
 	theme,
-	widget::{
-		common::{dynamic_image::DynamicImage, stack::Stack},
-		controllers::OnKey,
-		overlay::Overlay,
-		search_bar::SearchBar,
-	},
+	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},
 	State,
 };
 

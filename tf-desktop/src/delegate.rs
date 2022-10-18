@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	command,
 	controller::playback,
-	plugins::{self, Plugin, SearchResult},
+	plugins::{self, Plugin},
 	state::{NewTrack, TrackEdit},
 	State,
 };

@@ -56,4 +56,7 @@ pub fn add_track() -> impl Widget<NewTrack> {
 	.controller(ClickAfter::new(|ctx, _, _| {
 		ctx.submit_command(command::UI_TRACK_ADD_CLOSE);
 	}))
+	.controller(OnKey::new(Key::Escape, |ctx, _, _| {
+		ctx.submit_command(command::UI_TRACK_ADD_CLOSE);
+	}))
 }

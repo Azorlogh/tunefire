@@ -128,7 +128,7 @@ impl Widget<WData> for SearchBar {
 			}
 		}
 		if !old_data.data.same(&data.data) {
-			self.search_timer = ctx.request_timer(Duration::from_secs(1));
+			self.search_timer = ctx.request_timer(Duration::from_millis(300));
 		}
 	}
 
@@ -160,11 +160,14 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 					.lens(Field::new(|x: &(_, _)| &x.1, |x| &mut x.1))
 					.lens(Ctx::data()),
 			)
-			.with_child(Label::new(
-				|data: &Ctx<Option<usize>, (usize, SearchResult)>, _: &_| {
+			.with_flex_child(
+				Label::new(|data: &Ctx<Option<usize>, (usize, SearchResult)>, _: &_| {
 					format!("{} - {}", data.data.1.artist, data.data.1.title)
-				},
-			))
+				}),
+				1.0,
+			)
+			.fix_width(300.0)
+			.padding(8.0)
 			.background(SUGGESTION_BACKGROUND)
 			.env_scope(
 				|env: &mut Env, state: &Ctx<Option<usize>, (usize, SearchResult)>| {
