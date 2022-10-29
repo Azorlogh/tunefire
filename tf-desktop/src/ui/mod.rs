@@ -41,8 +41,7 @@ pub fn ui() -> impl Widget<State> {
 	root.add_default_spacer();
 	root.add_flex_child(main_view, 1.0);
 	root.add_default_spacer();
-	root.add_child(url_bar());
-	// root.add_child(track_suggestions());
+	root.add_child(search_bar());
 	root.add_default_spacer();
 	root.add_child(
 		Maybe::new(|| media_bar::ui(), || SizedBox::empty()).lens(Map::new(
@@ -101,7 +100,7 @@ fn query_box() -> impl Widget<State> {
 		.with_default_spacer()
 }
 
-fn url_bar() -> impl Widget<State> {
+fn search_bar() -> impl Widget<State> {
 	SearchBar::new().lens(Ctx::make(
 		State::track_search_results,
 		State::new_track_search,
