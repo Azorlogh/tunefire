@@ -6,9 +6,15 @@ use druid::{
 
 type DropFn<T> = Box<dyn Fn(&T, &Env) -> Box<dyn Widget<T>>>;
 
+enum Positioning {
+	Down,
+	Up(f64),
+}
+
 pub struct Dropdown<T> {
 	drop: DropFn<T>,
 	window: Option<WindowId>,
+	positioning: Positioning,
 }
 
 pub const DROPDOWN_SHOW: druid::Selector = druid::Selector::new("dropdown.show");
@@ -25,16 +31,40 @@ impl<T: Data> Dropdown<T> {
 		header.padding(0.).controller(Dropdown {
 			drop: Box::new(move |d, e| make_drop(d, e).boxed()),
 			window: None,
+			positioning: Positioning::Down,
+		})
+	}
+
+	pub fn new_upward<W: 'static + Widget<T>, DW: Widget<T> + 'static>(
+		header: W,
+		make_drop: impl Fn(&T, &Env) -> DW + 'static,
+		content_height: f64,
+	) -> impl Widget<T> {
+		header.padding(0.).controller(Dropdown {
+			drop: Box::new(move |d, e| make_drop(d, e).boxed()),
+			window: None,
+			positioning: Positioning::Up(content_height),
 		})
 	}
 
 	fn show_dropdown(&mut self, data: &mut T, env: &Env, ctx: &mut EventCtx) {
 		let widget = (self.drop)(data, env);
-		let mut origin = ctx.to_window(Point::new(0., ctx.size().height));
-
-		let insets = ctx.window().content_insets();
-		origin.x += insets.x0;
-		origin.y += insets.y0;
+		let origin = match self.positioning {
+			Positioning::Down => {
+				let mut origin = ctx.to_window(Point::new(0., ctx.size().height));
+				let insets = ctx.window().content_insets();
+				origin.x += insets.x0;
+				origin.y += insets.y0;
+				origin
+			}
+			Positioning::Up(content_height) => {
+				let mut origin = ctx.to_window(Point::new(0., -content_height));
+				let insets = ctx.window().content_insets();
+				origin.x += insets.x0;
+				origin.y += insets.y0;
+				origin
+			}
+		};
 
 		self.window = Some(
 			ctx.new_sub_window(

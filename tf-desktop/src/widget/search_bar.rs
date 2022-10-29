@@ -3,7 +3,7 @@ use std::time::Duration;
 use druid::{
 	keyboard_types::Key,
 	lens::{self, Field},
-	widget::{Flex, Label, List, TextBox},
+	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
 	Color, Data, Env, Event, Point, TimerToken, Widget, WidgetExt, WidgetPod,
 };
 
@@ -35,9 +35,10 @@ impl SearchBar {
 	pub fn new() -> Self {
 		Self {
 			inner: WidgetPod::new(
-				Dropdown::new(
+				Dropdown::new_upward(
 					TextBox::new().controller(AutoFocus).lens(Ctx::data()),
 					|_, _| track_suggestions().lens(Ctx::ctx()),
+					300.0,
 				)
 				.expand_width()
 				.boxed(),
@@ -66,7 +67,7 @@ impl Widget<WData> for SearchBar {
 					.ctx
 					.selected
 					.saturating_add(1)
-					.min(data.ctx.tracks.len().saturating_sub(1));
+					.min(data.ctx.tracks.len());
 				ctx.set_handled();
 			}
 			Event::KeyDown(event) if event.key == Key::Enter => {
@@ -153,7 +154,7 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 	List::new(|| {
 		Flex::row()
 			.with_child(
-				DynamicImage::new()
+				Maybe::new(|| DynamicImage::new(), || SizedBox::empty())
 					.fix_width(24.0)
 					.fix_height(24.0)
 					.lens(SearchResult::artwork)
@@ -190,4 +191,5 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 		),
 		TrackSuggestions::tracks,
 	))
+	.fix_height(300.0)
 }

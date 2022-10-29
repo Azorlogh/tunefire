@@ -63,30 +63,33 @@ impl Plugin for Soundcloud {
 					title,
 					artwork_url,
 				} => {
-					let mut artwork_buf = vec![];
-					ureq::get(artwork_url.as_str())
-						.call()
-						.ok()?
-						.into_reader()
-						.read_to_end(&mut artwork_buf)
-						.ok()?;
-					let artwork_image = image::io::Reader::new(std::io::Cursor::new(artwork_buf))
-						.with_guessed_format()
-						.ok()?
-						.decode()
-						.ok()?
-						.to_rgb8();
-					let artwork_imagebuf = druid::ImageBuf::from_raw(
-						artwork_image.as_raw().as_slice(),
-						ImageFormat::Rgb,
-						artwork_image.width() as usize,
-						artwork_image.height() as usize,
-					);
+					let artwork = artwork_url.and_then(|url| {
+						let mut artwork_buf = vec![];
+						ureq::get(url.as_str())
+							.call()
+							.ok()?
+							.into_reader()
+							.read_to_end(&mut artwork_buf)
+							.ok()?;
+						let artwork_image =
+							image::io::Reader::new(std::io::Cursor::new(artwork_buf))
+								.with_guessed_format()
+								.ok()?
+								.decode()
+								.ok()?
+								.to_rgb8();
+						Some(druid::ImageBuf::from_raw(
+							artwork_image.as_raw().as_slice(),
+							ImageFormat::Rgb,
+							artwork_image.width() as usize,
+							artwork_image.height() as usize,
+						))
+					});
 					Some(super::SearchResult {
 						url: Rc::new(permalink_url),
 						artist: user.username,
 						title,
-						artwork: artwork_imagebuf,
+						artwork,
 					})
 				}
 				_ => None,

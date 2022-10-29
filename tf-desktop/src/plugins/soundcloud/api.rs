@@ -14,9 +14,10 @@ pub enum SearchResult {
 		permalink_url: Url,
 		user: User,
 		title: String,
-		artwork_url: Url,
+		artwork_url: Option<Url>,
 	},
 	User,
+	Playlist,
 }
 
 #[derive(Deserialize, Serialize)]

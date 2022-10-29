@@ -16,6 +16,5 @@ pub struct SearchResult {
 	pub url: Rc<Url>,
 	pub artist: String,
 	pub title: String,
-	// pub artwork: Rc<Url>,
-	pub artwork: ImageBuf,
+	pub artwork: Option<ImageBuf>,
 }
