@@ -13,8 +13,9 @@ use self::media_bar::MediaBarState;
 use crate::{
 	command,
 	controller::playback::PlaybackController,
+	data::ctx::Ctx,
 	theme,
-	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay},
+	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},
 	State,
 };
 
@@ -40,7 +41,7 @@ pub fn ui() -> impl Widget<State> {
 	root.add_default_spacer();
 	root.add_flex_child(main_view, 1.0);
 	root.add_default_spacer();
-	root.add_child(url_bar());
+	root.add_child(search_bar());
 	root.add_default_spacer();
 	root.add_child(
 		Maybe::new(|| media_bar::ui(), || SizedBox::empty()).lens(Map::new(
@@ -99,15 +100,11 @@ fn query_box() -> impl Widget<State> {
 		.with_default_spacer()
 }
 
-fn url_bar() -> impl Widget<State> {
-	ControllerHost::new(
-		TextBox::new().with_placeholder("Source"),
-		OnKey::new(Key::Enter, |ctx, data: &mut String, _| {
-			ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(data.to_owned()))
-		}),
-	)
-	.expand_width()
-	.lens(State::new_track_url)
+fn search_bar() -> impl Widget<State> {
+	SearchBar::new().lens(Ctx::make(
+		State::track_search_results,
+		State::new_track_search,
+	))
 }
 
 fn play_query_button() -> impl Widget<State> {
@@ -125,6 +122,7 @@ pub const ICON_PREV: &str = include_str!("../../assets/previous.svg");
 pub const ICON_NEXT: &str = include_str!("../../assets/next.svg");
 pub const ICON_EDIT: &str = include_str!("../../assets/edit.svg");
 pub const ICON_DELETE: &str = include_str!("../../assets/delete.svg");
+pub const _ICON_SETTINGS: &str = include_str!("../../assets/settings.svg");
 
 pub fn draw_icon_button(ctx: &mut PaintCtx, env: &Env, icon_svg: &str) {
 	let size = ctx.size();
