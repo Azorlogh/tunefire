@@ -18,6 +18,7 @@ pub fn ui() -> impl Widget<State> {
 				.with_flex_child(List::new(track_ui).lens(State::queue), 1.0)
 		})
 		.with_tab("History", List::new(track_ui).lens(State::history))
+		.background(theme::BACKGROUND)
 }
 
 fn track_ui() -> impl Widget<Track> {

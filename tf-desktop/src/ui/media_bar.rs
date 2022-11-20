@@ -42,6 +42,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 				.fix_width(100.0)
 				.lens(MediaBarState::volume),
 		)
+		.with_default_spacer()
 		.with_child(Button::new("☰").on_click(
 			move |ctx: &mut EventCtx, _: &mut MediaBarState, _| {
 				ctx.submit_command(overlay::SHOW_MIDDLE.with((

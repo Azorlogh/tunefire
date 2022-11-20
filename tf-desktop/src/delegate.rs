@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use anyhow::Result;
 use druid::AppDelegate;
+use rand::seq::SliceRandom;
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -70,7 +71,8 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::QUERY_PLAY) => {
 				match data.query.parse::<tf_db::Filter>() {
 					Ok(filter) => match self.db.list_filtered(&filter) {
-						Ok(tracks) => {
+						Ok(mut tracks) => {
+							tracks.shuffle(&mut rand::thread_rng());
 							ctx.submit_command(playback::PLAYER_CLEAR);
 							data.queue = tracks.iter().cloned().map(Into::into).collect();
 							ctx.submit_command(
