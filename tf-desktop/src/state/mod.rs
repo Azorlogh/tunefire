@@ -1,7 +1,8 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use anyhow::Result;
 use druid::{im, Data, Lens};
+use parking_lot::RwLock;
 use tf_player::player;
 use uuid::Uuid;
 
@@ -14,10 +15,11 @@ pub use track_edit::{TagSuggestions, TrackEdit};
 mod track_new;
 pub use track_new::NewTrack;
 
-use crate::plugins::SearchResult;
+use crate::plugins::{self, Plugin, SearchResult};
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
+	pub plugins: im::Vector<Arc<RwLock<Box<dyn Plugin>>>>,
 	pub tracks: im::Vector<Track>,
 	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
@@ -43,7 +45,10 @@ impl State {
 			.map(Into::into)
 			.collect();
 
+		let sc: Box<dyn Plugin> = Box::new(plugins::Soundcloud::new().unwrap());
 		Ok(Self {
+			plugins: im::Vector::from_iter([Arc::new(RwLock::new(sc))].into_iter()),
+
 			tracks,
 			shown_tags: im::Vector::new(),
 			player_state: Rc::new(player::State::default()),

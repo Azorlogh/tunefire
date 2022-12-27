@@ -12,7 +12,7 @@ use tf_player::player;
 use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	controller::playback::PlaybackController,
+	controller::{playback::PlaybackController, plugin::SearchController},
 	data::ctx::Ctx,
 	theme,
 	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},
@@ -64,9 +64,10 @@ pub fn ui() -> impl Widget<State> {
 
 	Stack::new()
 		.with_child(
-			root.padding(10.0).expand_width().controller(
-				PlaybackController::new().expect("Couldn't create playback controller"),
-			),
+			root.padding(10.0)
+				.expand_width()
+				.controller(PlaybackController::new().expect("Couldn't create playback controller"))
+				.controller(SearchController::new().expect("Couldn't create plugin controller")),
 		)
 		.with_child(
 			Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),

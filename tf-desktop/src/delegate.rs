@@ -3,28 +3,23 @@ use std::rc::Rc;
 use anyhow::Result;
 use druid::AppDelegate;
 use rand::seq::SliceRandom;
-use tracing::{error, warn};
+use tracing::error;
 use uuid::Uuid;
 
 use crate::{
 	command,
 	controller::playback,
-	plugins::{self, Plugin},
 	state::{NewTrack, TrackEdit},
 	State,
 };
 
 pub struct Delegate {
 	db: tf_db::Client,
-	plugins: Vec<Box<dyn Plugin>>,
 }
 
 impl Delegate {
 	pub fn new(db: tf_db::Client) -> Result<Self> {
-		Ok(Self {
-			db,
-			plugins: vec![Box::new(plugins::Soundcloud::new()?)],
-		})
+		Ok(Self { db })
 	}
 
 	fn apply_track_edit(&mut self, edit: TrackEdit) -> Result<()> {
@@ -156,24 +151,6 @@ impl AppDelegate<State> for Delegate {
 				}
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::PLUGIN_SEARCH_TRACK) => {
-				let q = cmd.get_unchecked::<String>(command::PLUGIN_SEARCH_TRACK);
-				data.track_search_results.tracks.clear();
-				for plugin in &self.plugins {
-					match plugin.search(q) {
-						Ok(r) => {
-							data.track_search_results.tracks.extend(r);
-						}
-						Err(e) => warn!("{:?}", e),
-					}
-				}
-				druid::Handled::Yes
-			}
-			// _ if cmd.is(command::TRACK_SUGGESTION_SELECT) => {
-			// 	let search_result =
-			// 		cmd.get_unchecked::<SearchResult>(command::TRACK_SUGGESTION_SELECT);
-
-			// }
 			_ => druid::Handled::No,
 		}
 	}

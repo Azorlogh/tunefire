@@ -10,7 +10,7 @@ mod api;
 mod source;
 
 pub struct SoundcloudPlugin {
-	client_id: String,
+	pub client_id: String,
 }
 
 impl SoundcloudPlugin {

@@ -35,7 +35,7 @@ impl SoundcloudSource {
 		);
 
 		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
-		let format = symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default())?;
+		let format = symphonia::default::formats::MpaReader::try_new(mss, &Default::default())?;
 		let symphonia_source = util::symphonia::Source::from_format_reader(Box::new(format))?;
 
 		Ok(Self {
@@ -59,7 +59,7 @@ impl Source for SoundcloudSource {
 		);
 		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
 		let format =
-			symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default()).unwrap();
+			symphonia::default::formats::MpaReader::try_new(mss, &Default::default()).unwrap();
 		self.source = util::symphonia::Source::from_format_reader(Box::new(format)).unwrap();
 		Ok(())
 	}

@@ -1,11 +1,11 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use druid::piet::ImageFormat;
 use percent_encoding::{AsciiSet, CONTROLS};
 use tracing::debug;
 
-use super::Plugin;
+use super::{Plugin, SearchPlugin};
 
 mod api;
 
@@ -40,10 +40,28 @@ impl Soundcloud {
 	}
 }
 
+impl Plugin for Soundcloud {
+	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>> {
+		Some(Box::new(SoundcloudSearch {
+			client_id: self.client_id.clone(),
+		}))
+	}
+
+	fn get_source_plugin(&self) -> Option<Box<dyn tf_player::SourcePlugin>> {
+		Some(Box::new(tf_player::SoundcloudPlugin {
+			client_id: self.client_id.clone(),
+		}))
+	}
+}
+
 const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
 
-impl Plugin for Soundcloud {
-	fn search(&self, query: &str) -> Result<Vec<super::SearchResult>> {
+pub struct SoundcloudSearch {
+	client_id: String,
+}
+
+impl SearchPlugin for SoundcloudSearch {
+	fn search(&mut self, query: &str) -> Result<Vec<super::SearchResult>> {
 		let query_enc = percent_encoding::utf8_percent_encode(query, FRAGMENT);
 		let response_json = ureq::get(&format!(
 			"https://api-v2.soundcloud.com/search?client_id={}&q={}&limit=10&offset=0&linked_partitioning=1&app_version=1665395834&app_locale=en",
@@ -86,7 +104,7 @@ impl Plugin for Soundcloud {
 						))
 					});
 					Some(super::SearchResult {
-						url: Rc::new(permalink_url),
+						url: Arc::new(permalink_url),
 						artist: user.username,
 						title,
 						artwork,

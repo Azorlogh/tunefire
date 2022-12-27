@@ -134,7 +134,7 @@ impl Widget<WData> for TagTextBox {
 		env: &druid::Env,
 	) -> druid::Size {
 		let size = self.inner.layout(ctx, bc, data, env);
-		self.inner.set_origin(ctx, data, env, Point::ORIGIN);
+		self.inner.set_origin(ctx, Point::ORIGIN);
 		size
 	}
 
