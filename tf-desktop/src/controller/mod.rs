@@ -1,2 +1,2 @@
 pub mod playback;
-pub mod plugin;
+pub mod search;

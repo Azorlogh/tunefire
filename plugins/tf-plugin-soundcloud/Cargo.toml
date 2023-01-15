@@ -1,0 +1,20 @@
+[package]
+name = "tf-plugin-soundcloud"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.68"
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
+percent-encoding = "2.2.0"
+tracing = "0.1.37"
+tf-plugin = { path = "../../tf-plugin" }
+ureq = "2.5.0"
+regex = "1.7.0"
+serde = { version = "1.0.152", features=["derive"] }
+serde_json = "1.0.91"
+image = "0.24.5"
+hls_m3u8 = "0.4.1"
+parking_lot = "0.12.1"
+symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = ["mp3", "isomp4", "aac"] }
+url = "2.3.1"

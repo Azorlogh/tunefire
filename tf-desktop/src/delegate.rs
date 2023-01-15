@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use anyhow::Result;
 use druid::AppDelegate;
@@ -85,7 +85,7 @@ impl AppDelegate<State> for Delegate {
 			// ui
 			_ if cmd.is(command::UI_TRACK_EDIT_OPEN) => {
 				let id = cmd.get::<Uuid>(command::UI_TRACK_EDIT_OPEN).unwrap();
-				data.selected_track = Some(Rc::new(*id));
+				data.selected_track = Some(Arc::new(*id));
 				if let Some(track_edit) = data.track_edit.take() {
 					self.apply_track_edit(track_edit).unwrap();
 				}

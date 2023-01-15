@@ -12,7 +12,7 @@ use tf_player::player;
 use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	controller::{playback::PlaybackController, plugin::SearchController},
+	controller::{playback::PlaybackController, search::SearchController},
 	data::ctx::Ctx,
 	theme,
 	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},

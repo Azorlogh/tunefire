@@ -6,6 +6,7 @@ use druid::{
 	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
 	Color, Data, Env, Event, Point, TimerToken, Widget, WidgetExt, WidgetPod,
 };
+use tf_plugin::SearchResult;
 
 use super::{
 	common::{
@@ -16,9 +17,8 @@ use super::{
 };
 use crate::{
 	command,
-	controller::plugin,
+	controller::search,
 	data::ctx::Ctx,
-	plugins::SearchResult,
 	state::{NewTrack, TrackSuggestions},
 	theme,
 };
@@ -100,7 +100,7 @@ impl Widget<WData> for SearchBar {
 			}
 			Event::Timer(token) if token == &self.search_timer => {
 				println!("SEARCH TRAKC REQURSEST");
-				ctx.submit_command(plugin::SEARCH_TRACK_REQUEST.with(data.data.to_owned()));
+				ctx.submit_command(search::SEARCH_TRACK_REQUEST.with(data.data.to_owned()));
 			}
 			_ => {}
 		}

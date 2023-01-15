@@ -6,12 +6,10 @@ use druid::{
 	Widget, WidgetId,
 };
 use parking_lot::RwLock;
+use tf_plugin::{Plugin, SearchResult};
 use tracing::warn;
 
-use crate::{
-	plugins::{Plugin, SearchResult},
-	State,
-};
+use crate::State;
 
 pub const SEARCH_TRACK_REQUEST: Selector<String> = Selector::new("plugin.search-track.request");
 pub const SEARCH_TRACK_RESULTS: Selector<Vec<SearchResult>> =

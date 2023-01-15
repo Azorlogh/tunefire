@@ -4,14 +4,16 @@ use anyhow::Result;
 use hls_m3u8::MediaPlaylist;
 use parking_lot::Mutex;
 use symphonia::core::{formats::FormatReader, io::MediaSourceStream};
-
-use crate::{
+use tf_plugin::player::{
 	util::{
 		self,
 		hls::{self, SegmentCache, SegmentInfos},
 	},
-	Source,
+	Source, SourceError,
 };
+
+mod plugin;
+pub use plugin::SoundcloudSourcePlugin;
 
 pub struct SoundcloudSource {
 	segment_infos: SegmentInfos,
@@ -47,7 +49,7 @@ impl SoundcloudSource {
 }
 
 impl Source for SoundcloudSource {
-	fn seek(&mut self, pos: Duration) -> Result<(), crate::SourceError> {
+	fn seek(&mut self, pos: Duration) -> Result<(), SourceError> {
 		// Once symphonia's Mp3Reader supports SeekMode::Coarse,
 		// we can just replace this by: self.source.seek(pos)
 		// Until then, we recreate the source at the new location
@@ -64,7 +66,7 @@ impl Source for SoundcloudSource {
 		Ok(())
 	}
 
-	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
+	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), SourceError> {
 		self.source.next(buf)
 	}
 }

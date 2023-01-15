@@ -7,11 +7,6 @@ edition = "2021"
 description = "A modular music player"
 license = "GPL-3.0"
 
-[features]
-default = ["soundcloud", "youtube"]
-soundcloud = []
-youtube = ["ytextract", "tokio"]
-
 
 [dependencies]
 anyhow = "1.0.57"
@@ -29,7 +24,5 @@ parking_lot = "0.12.1"
 thiserror = "1.0"
 tracing = "0.1.35"
 
-tokio = { version="1.20.1", optional=true, features = ["rt-multi-thread"] }
-ytextract = {version = "0.11", optional = true }
 rtrb = "0.2.2"
 audio_thread_priority = "0.26.1"

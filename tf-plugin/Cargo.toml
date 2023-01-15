@@ -1,0 +1,12 @@
+[package]
+name = "tf-plugin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+druid = {git = "https://github.com/linebender/druid.git"}
+url = "2.3.1"
+tf-player = { path = "../tf-player" }
