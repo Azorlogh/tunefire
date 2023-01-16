@@ -30,13 +30,13 @@ fn main() -> Result<()> {
 			true
 		}));
 	tracing_subscriber::registry()
-		.with(EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new("debug")))
+		.with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")))
 		.with(fmt_layer)
 		.init();
 
 	let mut db = connect_to_db()?;
 
-	let main_window = WindowDesc::new(ui::ui()).window_size((800.0, 600.0));
+	let main_window = WindowDesc::new(ui::ui()).window_size((1000.0, 800.0));
 	let state = State::new(&mut db)?;
 	AppLauncher::with_window(main_window)
 		.delegate(delegate::Delegate::new(db)?)
@@ -50,5 +50,5 @@ fn connect_to_db() -> Result<tf_db::Client> {
 		.expect("failed to get data directory");
 	std::fs::create_dir_all(dirs.data_dir())?;
 	let db_path = dirs.data_dir().join("db.sqlite");
-	Ok(tf_db::Client::new(db_path)?)
+	tf_db::Client::new(db_path)
 }

@@ -144,6 +144,7 @@ impl Widget<f32> for Knob {
 			let ang0 = v0 * TAU;
 			let ang1 = v1 * TAU;
 			let mut path = BezPath::new();
+			path.move_to(Point::ZERO);
 			path.line_to(Point::new(ang0.cos() * radius, ang0.sin() * radius));
 			path.line_to(Point::new(ang1.cos() * radius, ang1.sin() * radius));
 			path.line_to(Point::ZERO);
@@ -155,6 +156,7 @@ impl Widget<f32> for Knob {
 			ctx.fill(path, &Color::rgb(color.red, color.green, color.blue));
 		}
 		let mut path = BezPath::new();
+		path.move_to(Point::ZERO);
 		for i in 0..=STEPS {
 			let ang0 = i as f64 / STEPS as f64 * TAU;
 			let ang1 = (i + 1) as f64 / STEPS as f64 * TAU;
