@@ -1,49 +1,17 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use druid::piet::ImageFormat;
-use percent_encoding::{AsciiSet, CONTROLS};
-use tracing::debug;
+use tf_plugin::SearchPlugin;
 
-use super::Plugin;
+use crate::{api, FRAGMENT};
 
-mod api;
-
-pub struct Soundcloud {
-	client_id: String,
+pub struct SoundcloudSearchPlugin {
+	pub client_id: String,
 }
 
-impl Soundcloud {
-	pub fn new() -> Result<Self> {
-		// grap soundcloud home page
-		let body = ureq::get("https://soundcloud.com").call()?.into_string()?;
-
-		// grab location of a specific script
-		let re = regex::Regex::new(r#"<script crossorigin src="([^\n]*)">"#).unwrap();
-		let magic_script = &re
-			.captures_iter(&body)
-			.last()
-			.ok_or(anyhow!("could not find url to the magic script"))?[1];
-
-		// grab that script
-		let body = ureq::get(magic_script).call()?.into_string()?;
-		let re = regex::Regex::new(r#"client_id:"([^"]*)""#).unwrap();
-
-		let client_id = re
-			.captures(&body)
-			.ok_or(anyhow!("missing client id in script"))?[1]
-			.to_owned();
-
-		debug!("soundcloud client id: {:?}", client_id);
-
-		Ok(Self { client_id })
-	}
-}
-
-const FRAGMENT: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`');
-
-impl Plugin for Soundcloud {
-	fn search(&self, query: &str) -> Result<Vec<super::SearchResult>> {
+impl SearchPlugin for SoundcloudSearchPlugin {
+	fn search(&mut self, query: &str) -> Result<Vec<tf_plugin::SearchResult>> {
 		let query_enc = percent_encoding::utf8_percent_encode(query, FRAGMENT);
 		let response_json = ureq::get(&format!(
 			"https://api-v2.soundcloud.com/search?client_id={}&q={}&limit=10&offset=0&linked_partitioning=1&app_version=1665395834&app_locale=en",
@@ -85,8 +53,8 @@ impl Plugin for Soundcloud {
 							artwork_image.height() as usize,
 						))
 					});
-					Some(super::SearchResult {
-						url: Rc::new(permalink_url),
+					Some(tf_plugin::SearchResult {
+						url: Arc::new(permalink_url),
 						artist: user.username,
 						title,
 						artwork,

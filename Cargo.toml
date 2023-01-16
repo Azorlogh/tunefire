@@ -4,4 +4,8 @@ members = [
 	"tf-db",
 	"tf-player",
 	"tf-desktop",
+	"tf-plugin",
+	"plugins/tf-plugin-local",
+	"plugins/tf-plugin-soundcloud",
+	"plugins/tf-plugin-youtube",
 ]

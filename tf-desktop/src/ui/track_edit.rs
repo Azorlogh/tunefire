@@ -48,8 +48,6 @@ pub fn ui() -> impl Widget<TrackEdit> {
 				ctx.submit_command(command::UI_TRACK_EDIT_CLOSE)
 			}),
 		)
-		// .border()
-		// .env_scope(|env, _| env.set(druid::theme::BORDER_DARK, Color::TRANSPARENT))
 		.fix_width(400.0)
 		.padding(8.0);
 	Container::new(col).background(crate::theme::BACKGROUND_HIGHLIGHT0)

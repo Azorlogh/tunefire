@@ -8,15 +8,13 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use parking_lot::RwLock;
-use url::Url;
 
 use super::Command;
-use crate::{LocalPlugin, SoundcloudPlugin, SourcePlugin, TrackSource, YoutubePlugin};
+use crate::TrackSource;
 
 pub struct Controller {
 	sender: crossbeam_channel::Sender<Command>,
 	state: Arc<RwLock<super::State>>,
-	plugins: Vec<Box<dyn SourcePlugin>>,
 	nb_queued: Arc<AtomicUsize>,
 }
 
@@ -35,37 +33,15 @@ impl Controller {
 		Ok(Self {
 			state,
 			sender,
-			plugins: vec![
-				Box::new(LocalPlugin),
-				Box::new(SoundcloudPlugin::new()?),
-				Box::new(YoutubePlugin::new()?),
-			],
 			nb_queued,
 		})
-	}
-
-	fn create_source(&self, url: &Url) -> Result<TrackSource> {
-		for plugin in &self.plugins {
-			if let Some(source) = plugin.handle_url(&url) {
-				let source = source.map_err(|err| {
-					anyhow!(
-						"plugin {} failed to handle this track {}",
-						plugin.name(),
-						err
-					)
-				})?;
-				return Ok(source);
-			}
-		}
-		Err(anyhow!("no plugin could find this track"))
 	}
 
 	pub fn clear(&self) {
 		self.sender.send(Command::Clear).unwrap();
 	}
 
-	pub fn queue_track(&self, url: Url) -> Result<()> {
-		let source = self.create_source(&url)?;
+	pub fn queue_track(&self, source: TrackSource) -> Result<()> {
 		if let Err(e) = self.sender.send(Command::QueueTrack(source)) {
 			panic!("{:?}", e);
 		}

@@ -1,11 +1,11 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use druid::{im, ArcStr, Data, Lens};
 use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
 pub struct Track {
-	pub id: Rc<Uuid>,
+	pub id: Arc<Uuid>,
 	pub source: ArcStr,
 	pub title: ArcStr,
 	pub artist: ArcStr,
@@ -15,7 +15,7 @@ pub struct Track {
 impl From<tf_db::Track> for Track {
 	fn from(t: tf_db::Track) -> Self {
 		Self {
-			id: Rc::new(t.id),
+			id: Arc::new(t.id),
 			source: t.source.into(),
 			title: t.title.into(),
 			artist: t.artist.into(),

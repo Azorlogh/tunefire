@@ -49,7 +49,7 @@ impl<T: Data> Widget<T> for Stack<T> {
 		let mut size = Size::ZERO;
 		for child in &mut self.children {
 			size = child.layout(ctx, bc, data, env);
-			child.set_layout_rect(ctx, data, env, Rect::from_origin_size(Point::ORIGIN, size))
+			child.set_layout_rect(ctx, Rect::from_origin_size(Point::ORIGIN, size))
 		}
 		size
 	}

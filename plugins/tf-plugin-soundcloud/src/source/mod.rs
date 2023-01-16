@@ -4,14 +4,16 @@ use anyhow::Result;
 use hls_m3u8::MediaPlaylist;
 use parking_lot::Mutex;
 use symphonia::core::{formats::FormatReader, io::MediaSourceStream};
-
-use crate::{
+use tf_plugin::player::{
 	util::{
 		self,
 		hls::{self, SegmentCache, SegmentInfos},
 	},
-	Source,
+	Source, SourceError,
 };
+
+mod plugin;
+pub use plugin::SoundcloudSourcePlugin;
 
 pub struct SoundcloudSource {
 	segment_infos: SegmentInfos,
@@ -35,7 +37,7 @@ impl SoundcloudSource {
 		);
 
 		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
-		let format = symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default())?;
+		let format = symphonia::default::formats::MpaReader::try_new(mss, &Default::default())?;
 		let symphonia_source = util::symphonia::Source::from_format_reader(Box::new(format))?;
 
 		Ok(Self {
@@ -47,7 +49,7 @@ impl SoundcloudSource {
 }
 
 impl Source for SoundcloudSource {
-	fn seek(&mut self, pos: Duration) -> Result<(), crate::SourceError> {
+	fn seek(&mut self, pos: Duration) -> Result<(), SourceError> {
 		// Once symphonia's Mp3Reader supports SeekMode::Coarse,
 		// we can just replace this by: self.source.seek(pos)
 		// Until then, we recreate the source at the new location
@@ -59,12 +61,12 @@ impl Source for SoundcloudSource {
 		);
 		let mss = MediaSourceStream::new(Box::new(hls_source), Default::default());
 		let format =
-			symphonia::default::formats::Mp3Reader::try_new(mss, &Default::default()).unwrap();
+			symphonia::default::formats::MpaReader::try_new(mss, &Default::default()).unwrap();
 		self.source = util::symphonia::Source::from_format_reader(Box::new(format)).unwrap();
 		Ok(())
 	}
 
-	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
+	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), SourceError> {
 		self.source.next(buf)
 	}
 }

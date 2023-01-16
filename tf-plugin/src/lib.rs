@@ -1,17 +1,18 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-
-mod soundcloud;
 use druid::{Data, ImageBuf, Lens};
-pub use soundcloud::Soundcloud;
-use tf_player::SourcePlugin;
+pub use tf_player::{self as player, SourcePlugin};
 use url::Url;
 
 pub trait Plugin {
-	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>>;
+	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>> {
+		None
+	}
 
-	fn get_source_plugin(&self) -> Option<Box<dyn SourcePlugin>>;
+	fn get_source_plugin(&self) -> Option<Box<dyn SourcePlugin>> {
+		None
+	}
 }
 
 pub trait SearchPlugin: Send {

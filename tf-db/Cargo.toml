@@ -7,9 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-clap = { version = "3.1.18", features = ["derive"] }
-cpal = "0.13.5"
 rusqlite = { version = "0.27.0", features = ["bundled"]}
-serde = "1.0.137"
 uuid = { version = "1.0.0", features = ["v4", "serde"] }
 nom = "7.1.1"

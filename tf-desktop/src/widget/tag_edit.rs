@@ -86,10 +86,9 @@ impl Widget<Data> for TagEdit {
 		));
 		let text_box_size = self.text_box.layout(ctx, &text_box_bc, data, env);
 
-		self.text_box
-			.set_origin(ctx, data, env, Point::new(0.0, 0.0));
+		self.text_box.set_origin(ctx, Point::new(0.0, 0.0));
 		self.knob
-			.set_origin(ctx, &data.data.1, env, Point::new(text_box_size.width, 0.0));
+			.set_origin(ctx, Point::new(text_box_size.width, 0.0));
 		Size::new(
 			text_box_size.width + knob_size.width,
 			text_box_size.height.max(knob_size.height),

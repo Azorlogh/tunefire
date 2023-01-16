@@ -2,26 +2,19 @@ use std::{sync::mpsc, time::Duration};
 
 use anyhow::{anyhow, Result};
 use symphonia::core::{io::MediaSourceStream, probe::Hint};
+use tf_plugin::player::{
+	util::{self, http_progressive::HttpProgressive},
+	Source, SourceError, SourcePlugin, TrackInfo, TrackSource,
+};
 use tokio::runtime::Runtime;
 use tracing::debug;
 use url::Url;
 
-use crate::{
-	util::{self, http_progressive::HttpProgressive},
-	Source, SourcePlugin, TrackInfo, TrackSource,
-};
-
-pub struct YoutubePlugin {
-	client: ytextract::Client,
+pub struct YoutubeSourcePlugin {
+	pub client: ytextract::Client,
 }
 
-impl YoutubePlugin {
-	pub fn new() -> Result<Self> {
-		Ok(YoutubePlugin {
-			client: ytextract::Client::new(),
-		})
-	}
-
+impl YoutubeSourcePlugin {
 	pub fn handle(&self, url: &Url) -> Result<TrackSource> {
 		let video_id: ytextract::video::Id = url
 			.query_pairs()
@@ -56,7 +49,7 @@ impl YoutubePlugin {
 	}
 }
 
-impl SourcePlugin for YoutubePlugin {
+impl SourcePlugin for YoutubeSourcePlugin {
 	fn name(&self) -> &'static str {
 		"Youtube"
 	}
@@ -89,11 +82,11 @@ impl YoutubeSource {
 }
 
 impl Source for YoutubeSource {
-	fn seek(&mut self, pos: Duration) -> Result<(), crate::SourceError> {
+	fn seek(&mut self, pos: Duration) -> Result<(), SourceError> {
 		self.source.seek(pos)
 	}
 
-	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), crate::SourceError> {
+	fn next(&mut self, buf: &mut [[f32; 2]]) -> Result<(), SourceError> {
 		self.source.next(buf)
 	}
 }

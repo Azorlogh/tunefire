@@ -4,9 +4,13 @@ use anyhow::Result;
 use crossbeam_channel::Receiver;
 use druid::{
 	widget::Controller, Env, Event, EventCtx, ExtEventSink, LifeCycle, LifeCycleCtx, Selector,
-	Widget,
+	SingleUse, Widget, WidgetId,
 };
-use tf_player::player::{self};
+use tf_player::{
+	player::{self},
+	SourcePlugin, TrackSource,
+};
+use tracing::warn;
 use url::Url;
 
 use crate::{media_controls::MediaControls, state::Track, State};
@@ -19,6 +23,8 @@ pub const PLAYER_PREV: Selector = Selector::new("player.prev");
 pub const PLAYER_NEXT: Selector = Selector::new("player.next");
 pub const PLAYER_EVENT: Selector<player::Event> = Selector::new("player.event");
 pub const PLAYER_SET_VOLUME: Selector<f32> = Selector::new("player.set-volume");
+pub const PLAYER_CREATED_SOURCE: Selector<(Track, SingleUse<tf_player::TrackSource>)> =
+	Selector::new("player.source.created");
 
 pub struct PlaybackController {
 	player: player::Controller,
@@ -50,10 +56,47 @@ impl PlaybackController {
 			.unwrap();
 	}
 
-	pub fn queue_track(&mut self, data: &mut State, track: &Track) {
-		self.player
-			.queue_track(Url::parse(&track.source).unwrap())
-			.unwrap();
+	pub fn request_track_audio_source(
+		&mut self,
+		data: &mut State,
+		track: &Track,
+		sink: ExtEventSink,
+		widget_id: WidgetId,
+	) {
+		let plugins: Vec<Box<dyn SourcePlugin>> = data
+			.plugins
+			.iter()
+			.filter_map(|p| p.read().get_source_plugin())
+			.collect();
+		let url = Url::parse(&track.source).unwrap();
+		let track = track.clone();
+		std::thread::spawn(move || {
+			if let Some(result) = plugins.iter().find_map(|p| p.handle_url(&url)) {
+				match result {
+					Ok(source) => sink
+						.submit_command(
+							PLAYER_CREATED_SOURCE,
+							Box::new((track, SingleUse::new(source))),
+							widget_id,
+						)
+						.unwrap(),
+					Err(e) => {
+						warn!("error while handling track {url:?}: {e}");
+					}
+				}
+			} else {
+				warn!("no plugin could handle the track: {url:?}");
+			}
+		});
+	}
+
+	pub fn queue_track(
+		&mut self,
+		data: &mut State,
+		track: &Track,
+		track_source: tf_player::TrackSource,
+	) {
+		self.player.queue_track(track_source).unwrap();
 		data.current_track = Some(track.clone());
 		self.update_media_controls(data);
 		self.play();
@@ -123,9 +166,12 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 							);
 							if until_empty < Duration::from_secs(3) {
 								if let Some(track) = data.queue.front() {
-									self.player
-										.queue_track(Url::parse(&track.source).unwrap())
-										.unwrap();
+									self.request_track_audio_source(
+										data,
+										&track.clone(),
+										ctx.get_external_handle(),
+										ctx.widget_id(),
+									)
 								}
 							}
 							data.player_state = Rc::new(ps.clone());
@@ -149,7 +195,12 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 				}
 				_ if cmd.is(PLAYER_ENQUEUE) => {
 					let track = cmd.get_unchecked::<Track>(PLAYER_ENQUEUE);
-					self.queue_track(data, track);
+					self.request_track_audio_source(
+						data,
+						track,
+						ctx.get_external_handle(),
+						ctx.widget_id(),
+					);
 					druid::Handled::Yes
 				}
 				_ if cmd.is(PLAYER_PLAY_PAUSE) => {
@@ -158,9 +209,12 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 				}
 				_ if cmd.is(PLAYER_PREV) && self.player.nb_queued() == 0 => {
 					if let Some(track) = data.history.pop_front() {
-						self.player
-							.queue_track(Url::parse(&track.source).unwrap())
-							.unwrap();
+						self.request_track_audio_source(
+							data,
+							&track,
+							ctx.get_external_handle(),
+							ctx.widget_id(),
+						);
 						data.queue.push_front(data.current_track.take().unwrap());
 						data.current_track = Some(track);
 						self.player.skip().unwrap();
@@ -171,9 +225,12 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 				_ if cmd.is(PLAYER_NEXT) => {
 					if self.player.nb_queued() == 0 {
 						if let Some(track) = data.queue.pop_front() {
-							self.player
-								.queue_track(Url::parse(&track.source).unwrap())
-								.unwrap();
+							self.request_track_audio_source(
+								data,
+								&track,
+								ctx.get_external_handle(),
+								ctx.widget_id(),
+							);
 							data.history.push_front(data.current_track.take().unwrap());
 							data.current_track = Some(track);
 							self.player.skip().unwrap();
@@ -190,6 +247,12 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 				_ if cmd.is(PLAYER_SET_VOLUME) => {
 					let volume = cmd.get_unchecked::<f32>(PLAYER_SET_VOLUME);
 					self.player.set_volume(*volume).unwrap();
+					druid::Handled::Yes
+				}
+				_ if cmd.is(PLAYER_CREATED_SOURCE) => {
+					let (track, source) =
+						cmd.get_unchecked::<(Track, SingleUse<TrackSource>)>(PLAYER_CREATED_SOURCE);
+					self.queue_track(data, track, source.take().unwrap());
 					druid::Handled::Yes
 				}
 				_ => druid::Handled::No,
@@ -212,12 +275,10 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 		data: &State,
 		env: &Env,
 	) {
-		match event {
-			LifeCycle::WidgetAdded => {
-				self.spawn_event_thread(ctx.get_external_handle());
-				self.media_controls = MediaControls::new(ctx.window()).ok();
-			}
-			_ => {}
+		if let LifeCycle::WidgetAdded = event {
+			self.spawn_event_thread(ctx.get_external_handle());
+			// TODO: self.spawn_source_thread();
+			self.media_controls = MediaControls::new(ctx.window()).ok();
 		}
 		child.lifecycle(ctx, event, data, env)
 	}

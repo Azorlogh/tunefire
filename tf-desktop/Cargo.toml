@@ -7,6 +7,12 @@ edition = "2021"
 description = "A modular music player"
 license = "GPL-3.0"
 
+[features]
+default = ["local", "soundcloud", "youtube"]
+local = ["tf-plugin-local"]
+soundcloud = ["tf-plugin-soundcloud"]
+youtube = ["tf-plugin-youtube"]
+
 [dependencies]
 tf-db = { path = "../tf-db" }
 tf-player = { path = "../tf-player" }
@@ -21,10 +27,9 @@ directories = "4.0.1"
 souvlaki = "0.5.1"
 crossbeam-channel = "0.5.6"
 palette = "0.6.1"
-ureq = "2.5.0"
-regex = "1.6.0"
-serde_json = "1.0.86"
-percent-encoding = "2.2.0"
-serde = "1.0.145"
-image = "0.24.4"
 rand = "0.8"
+
+tf-plugin = { path = "../tf-plugin" }
+tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }
+tf-plugin-soundcloud = { path = "../plugins/tf-plugin-soundcloud", optional = true }
+tf-plugin-youtube = { path = "../plugins/tf-plugin-youtube", optional = true }

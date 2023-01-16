@@ -1,7 +1,8 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use anyhow::Result;
 use druid::{im, Data, Lens};
+use parking_lot::RwLock;
 use tf_player::player;
 use uuid::Uuid;
 
@@ -12,12 +13,12 @@ mod track_edit;
 pub use track_edit::{TagSuggestions, TrackEdit};
 
 mod track_new;
+use tf_plugin::{self, Plugin, SearchResult};
 pub use track_new::NewTrack;
-
-use crate::plugins::SearchResult;
 
 #[derive(Clone, Data, Lens)]
 pub struct State {
+	pub plugins: im::Vector<Arc<RwLock<Box<dyn Plugin>>>>,
 	pub tracks: im::Vector<Track>,
 	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
@@ -30,7 +31,7 @@ pub struct State {
 	pub track_search_results: TrackSuggestions,
 	pub track_edit: Option<TrackEdit>,
 	pub current_track: Option<Track>,
-	pub selected_track: Option<Rc<Uuid>>,
+	pub selected_track: Option<Arc<Uuid>>,
 	pub volume: f64,
 }
 
@@ -43,7 +44,16 @@ impl State {
 			.map(Into::into)
 			.collect();
 
+		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
+		#[cfg(feature = "local")]
+		plugins.push(Box::new(tf_plugin_local::Local));
+		#[cfg(feature = "soundcloud")]
+		plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
+		#[cfg(feature = "youtube")]
+		plugins.push(Box::new(tf_plugin_youtube::Youtube::new().unwrap()));
+
 		Ok(Self {
+			plugins: im::Vector::from_iter(plugins.into_iter().map(|p| Arc::new(RwLock::new(p)))),
 			tracks,
 			shown_tags: im::Vector::new(),
 			player_state: Rc::new(player::State::default()),

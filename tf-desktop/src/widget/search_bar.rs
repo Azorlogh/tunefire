@@ -6,6 +6,7 @@ use druid::{
 	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
 	Color, Data, Env, Event, Point, TimerToken, Widget, WidgetExt, WidgetPod,
 };
+use tf_plugin::SearchResult;
 
 use super::{
 	common::{
@@ -16,8 +17,8 @@ use super::{
 };
 use crate::{
 	command,
+	controller::search,
 	data::ctx::Ctx,
-	plugins::SearchResult,
 	state::{NewTrack, TrackSuggestions},
 	theme,
 };
@@ -72,24 +73,25 @@ impl Widget<WData> for SearchBar {
 			}
 			Event::KeyDown(event) if event.key == Key::Enter => {
 				let suggestions = std::mem::take(&mut data.ctx.tracks);
-				if let Some(track) = data
+				let new_track = if let Some(track) = data
 					.ctx
 					.selected
 					.checked_sub(1)
 					.and_then(|i| suggestions.into_iter().nth(i))
 				{
-					ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(NewTrack {
+					NewTrack {
 						source: track.url.to_string(),
 						artist: track.artist,
 						title: track.title,
-					}));
+					}
 				} else {
-					ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(NewTrack {
+					NewTrack {
 						source: data.data.to_owned(),
 						artist: String::new(),
 						title: String::new(),
-					}));
-				}
+					}
+				};
+				ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(new_track));
 				ctx.focus_next();
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
@@ -97,7 +99,8 @@ impl Widget<WData> for SearchBar {
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
 			Event::Timer(token) if token == &self.search_timer => {
-				ctx.submit_command(command::PLUGIN_SEARCH_TRACK.with(data.data.to_owned()));
+				println!("SEARCH TRAKC REQURSEST");
+				ctx.submit_command(search::SEARCH_TRACK_REQUEST.with(data.data.to_owned()));
 			}
 			_ => {}
 		}
@@ -141,7 +144,7 @@ impl Widget<WData> for SearchBar {
 		env: &druid::Env,
 	) -> druid::Size {
 		let size = self.inner.layout(ctx, bc, data, env);
-		self.inner.set_origin(ctx, data, env, Point::ORIGIN);
+		self.inner.set_origin(ctx, Point::ORIGIN);
 		size
 	}
 
