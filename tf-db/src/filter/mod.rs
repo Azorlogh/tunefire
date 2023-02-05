@@ -5,15 +5,15 @@ mod parser;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Filter {
 	All,
-	And(Box<Filter>, Box<Filter>),
-	Or(Box<Filter>, Box<Filter>),
-	Not(Box<Filter>),
 	LessThan {
 		tag: String,
 		threshold: f32,
 		inclusive: bool,
 	},
 	Artist(String),
+	And(Box<Filter>, Box<Filter>),
+	Or(Box<Filter>, Box<Filter>),
+	Not(Box<Filter>),
 }
 
 impl Filter {
