@@ -29,6 +29,13 @@ fn tag_name(i: &str) -> IResult<&str, String> {
 	)(i)
 }
 
+fn artist_name(i: &str) -> IResult<&str, String> {
+	map(
+		take_while1(|c: char| c.is_ascii_alphabetic() || c == '_'),
+		ToOwned::to_owned,
+	)(i)
+}
+
 fn float(input: &str) -> IResult<&str, &str> {
 	alt((
 		// Case one: .42
@@ -58,48 +65,53 @@ fn threshold(i: &str) -> IResult<&str, f32> {
 // tag comparisons
 fn filter3(i: &str) -> IResult<&str, Filter> {
 	println!("filter3 {:?}", i);
-	alt((map(
-		tuple((
-			tag_name,
-			ws(alt((tag("<="), tag("<"), tag(">="), tag(">"), tag("=")))),
-			threshold,
-		)),
-		|(tag, op, threshold)| match op {
-			"<" => Filter::LessThan {
-				tag,
+	alt((
+		map(
+			tuple((
+				tag_name,
+				ws(alt((tag("<="), tag("<"), tag(">="), tag(">"), tag("=")))),
 				threshold,
-				inclusive: false,
-			},
-			"<=" => Filter::LessThan {
-				tag,
-				threshold,
-				inclusive: true,
-			},
-			">" => Filter::Not(Box::new(Filter::LessThan {
-				tag,
-				threshold,
-				inclusive: true,
-			})),
-			">=" => Filter::Not(Box::new(Filter::LessThan {
-				tag,
-				threshold,
-				inclusive: false,
-			})),
-			"=" => Filter::And(
-				Box::new(Filter::LessThan {
-					tag: tag.clone(),
-					threshold,
-					inclusive: true,
-				}),
-				Box::new(Filter::Not(Box::new(Filter::LessThan {
+			)),
+			|(tag, op, threshold)| match op {
+				"<" => Filter::LessThan {
 					tag,
 					threshold,
 					inclusive: false,
-				}))),
-			),
-			_ => unreachable!(),
-		},
-	),))(i)
+				},
+				"<=" => Filter::LessThan {
+					tag,
+					threshold,
+					inclusive: true,
+				},
+				">" => Filter::Not(Box::new(Filter::LessThan {
+					tag,
+					threshold,
+					inclusive: true,
+				})),
+				">=" => Filter::Not(Box::new(Filter::LessThan {
+					tag,
+					threshold,
+					inclusive: false,
+				})),
+				"=" => Filter::And(
+					Box::new(Filter::LessThan {
+						tag: tag.clone(),
+						threshold,
+						inclusive: true,
+					}),
+					Box::new(Filter::Not(Box::new(Filter::LessThan {
+						tag,
+						threshold,
+						inclusive: false,
+					}))),
+				),
+				_ => unreachable!(),
+			},
+		),
+		map(preceded(tag("artist:"), artist_name), |name| {
+			Filter::Artist(name)
+		}),
+	))(i)
 }
 
 // consider negation
@@ -137,14 +149,7 @@ fn filter0(i: &str) -> IResult<&str, Filter> {
 }
 
 fn filter(i: &str) -> IResult<&str, Filter> {
-	alt((
-		filter0,
-		map(tag(""), |_| Filter::LessThan {
-			tag: String::from("a"),
-			threshold: 1.0,
-			inclusive: true,
-		}),
-	))(i)
+	alt((filter0, map(tag(""), |_| Filter::All)))(i)
 }
 
 impl FromStr for Filter {
@@ -184,6 +189,14 @@ mod test {
 				inclusive: true,
 			}))
 		);
+	}
+
+	#[test]
+	fn test_artist() {
+		assert_eq!(
+			Filter::from_str("artist:foo").unwrap(),
+			Filter::Artist(String::from("foo")),
+		)
 	}
 
 	#[test]
