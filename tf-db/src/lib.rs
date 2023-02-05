@@ -142,6 +142,19 @@ impl Client {
 	fn view_filtered(&mut self, filter: &Filter) -> Result<Uuid> {
 		let uuid = Uuid::new_v4();
 		let uuid = match filter {
+			Filter::All => {
+				self.conn.execute(
+					&format!(
+						r#"
+								CREATE TEMP VIEW "{uuid}" AS
+								SELECT tracks.id
+								FROM tracks
+								"#,
+					),
+					[],
+				)?;
+				uuid
+			}
 			Filter::LessThan {
 				tag,
 				threshold,
@@ -158,6 +171,20 @@ impl Client {
 								WHERE coalesce(track_tags.value, 0.0) {} {threshold}
 								"#,
 						if *inclusive { "<=" } else { "<" },
+					),
+					[],
+				)?;
+				uuid
+			}
+			Filter::Artist(artist) => {
+				self.conn.execute(
+					&format!(
+						r#"
+						CREATE TEMP VIEW "{uuid}" AS
+						SELECT tracks.id
+						FROM tracks
+						WHERE tracks.artist = '{artist}'
+						"#,
 					),
 					[],
 				)?;
