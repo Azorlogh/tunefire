@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
-druid = {git = "https://github.com/linebender/druid.git"}
+druid = { git = "https://github.com/linebender/druid.git" }
 url = "2.3.1"
 tf-player = { path = "../tf-player" }

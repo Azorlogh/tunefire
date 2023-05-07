@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package hubdj;
+
+service Hubdj {
+  rpc Auth(AuthRequest) returns (AuthResponse) {}
+  rpc GetClient(ClientId) returns (Client) {}
+  rpc SubmitPlaylist(Playlist) returns (Status) {}
+}
+
+message ClientId { uint64 id = 1; }
+
+message Client {
+  uint64 id = 1;
+  string name = 2;
+  repeated Track tracks = 3;
+}
+
+message AuthRequest { string name = 1; }
+
+message AuthResponse {
+  uint64 token = 1;
+  uint64 id = 2;
+  repeated uint64 clients = 3;
+}
+
+message Status { bool ok = 1; }
+
+message Playlist { repeated Track tracks = 1; }
+
+message Track { string url = 1; }

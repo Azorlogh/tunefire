@@ -16,7 +16,7 @@ youtube = ["tf-plugin-youtube"]
 [dependencies]
 tf-db = { path = "../tf-db" }
 tf-player = { path = "../tf-player" }
-druid = {git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
 anyhow = "1.0.57"
 parking_lot = "0.12.1"
 url = "2.2.2"

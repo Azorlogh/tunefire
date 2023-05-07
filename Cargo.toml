@@ -8,4 +8,7 @@ members = [
 	"plugins/tf-plugin-local",
 	"plugins/tf-plugin-soundcloud",
 	"plugins/tf-plugin-youtube",
+	"hubdj/hubdj-core",
+	"hubdj/hubdj-server",
+	"hubdj/hubdj-client",
 ]

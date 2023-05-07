@@ -1,0 +1,17 @@
+[package]
+name = "hubdj-client"
+version = "0.1.0"
+edition = "2021"
+build = "../build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.28", features = ["full"] }
+tonic = "0.9"
+prost = "0.11"
+clap = { version = "4.2", features = ["derive"] }
+druid = { git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
+
+[build-dependencies]
+tonic-build = "0.9"
