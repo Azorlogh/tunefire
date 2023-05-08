@@ -38,7 +38,7 @@ pub trait ImportPlugin: Send {
 #[derive(Debug, Clone)]
 pub enum ImportedItem {
 	Track(TrackInfo),
-	Set(Vec<TrackInfo>),
+	Playlist(Vec<TrackInfo>),
 }
 
 #[derive(Debug, Clone)]

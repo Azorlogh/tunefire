@@ -1,5 +1,17 @@
 use druid::{im, Data, Lens};
 
+#[derive(Clone, Data)]
+pub enum TrackImport {
+	Single(NewTrack),
+	Bulk(NewTrackBulk),
+}
+
+#[derive(Clone, Default, Data, Lens)]
+pub struct NewTrackBulk {
+	pub tracks: im::Vector<NewTrack>,
+	pub tag: Option<(String, f32)>,
+}
+
 #[derive(Clone, Default, Data, Lens)]
 pub struct NewTrack {
 	pub source: String,

@@ -21,10 +21,10 @@ use crate::{
 	State,
 };
 
-mod add_track;
 mod media_bar;
 mod queue;
 mod track_edit;
+mod track_import;
 mod track_list;
 
 pub fn ui() -> impl Widget<State> {
@@ -73,7 +73,8 @@ pub fn ui() -> impl Widget<State> {
 				.controller(ImportController),
 		)
 		.with_child(
-			Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
+			Maybe::new(|| track_import::track_import(), || SizedBox::empty())
+				.lens(State::track_import),
 		)
 		.with_child(Overlay::new())
 }

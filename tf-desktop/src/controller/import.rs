@@ -2,7 +2,11 @@ use druid::{widget::Controller, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, S
 use tf_plugin::ImportedItem;
 use tracing::warn;
 
-use crate::{command, state::NewTrack, State};
+use crate::{
+	command,
+	state::{NewTrack, NewTrackBulk, TrackImport},
+	State,
+};
 
 pub const IMPORT_REQUEST: Selector<String> = Selector::new("plugin.import.request");
 
@@ -28,20 +32,34 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 							.filter_map(|p| p.read().get_import_plugin())
 						{
 							if let Some(res) = plugin.import(&url) {
-								println!("RES: {:?}", res);
 								match res {
 									Ok(item) => match item {
 										ImportedItem::Track(track) => {
-											println!("overwriting newtraack");
-											ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(
-												NewTrack {
+											ctx.submit_command(command::UI_TRACK_IMPORT_OPEN.with(
+												TrackImport::Single(NewTrack {
 													source: url.to_string(),
 													title: track.title,
 													artists: track.artists,
-												},
+												}),
 											));
 										}
-										_ => todo!(),
+										ImportedItem::Playlist(tracks) => {
+											ctx.submit_command(
+												command::UI_TRACK_IMPORT_OPEN.with(
+													TrackImport::Bulk(NewTrackBulk {
+														tracks: tracks
+															.into_iter()
+															.map(|track| NewTrack {
+																source: url.to_string(),
+																title: track.title,
+																artists: track.artists,
+															})
+															.collect(),
+														tag: None,
+													}),
+												),
+											);
+										}
 									},
 									Err(e) => warn!("failed to import {url}: {e}"),
 								}

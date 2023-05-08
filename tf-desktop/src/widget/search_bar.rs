@@ -20,7 +20,7 @@ use crate::{
 	command,
 	controller::{import::IMPORT_REQUEST, search},
 	data::ctx::Ctx,
-	state::{NewTrack, TrackSuggestions},
+	state::{NewTrack, TrackImport, TrackSuggestions},
 	theme,
 };
 
@@ -93,7 +93,9 @@ impl Widget<WData> for SearchBar {
 						title: String::new(),
 					}
 				};
-				ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(new_track));
+				ctx.submit_command(
+					command::UI_TRACK_IMPORT_OPEN.with(TrackImport::Single(new_track)),
+				);
 				ctx.focus_next();
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}

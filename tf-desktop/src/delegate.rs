@@ -96,13 +96,13 @@ impl AppDelegate<State> for Delegate {
 				}
 				druid::Handled::Yes
 			}
-			_ if cmd.is(command::UI_TRACK_ADD_OPEN) => {
-				let new_track = cmd.get_unchecked::<_>(command::UI_TRACK_ADD_OPEN);
-				data.new_track = Some(new_track.clone());
+			_ if cmd.is(command::UI_TRACK_IMPORT_OPEN) => {
+				let track_import = cmd.get_unchecked::<_>(command::UI_TRACK_IMPORT_OPEN);
+				data.track_import = Some(track_import.clone());
 				druid::Handled::Yes
 			}
 			_ if cmd.is(command::UI_TRACK_ADD_CLOSE) => {
-				data.new_track = None;
+				data.track_import = None;
 				druid::Handled::Yes
 			}
 
@@ -114,7 +114,7 @@ impl AppDelegate<State> for Delegate {
 						let track = self.db.get_track(id).unwrap();
 						data.tracks.push_back((id, track).into());
 						data.new_track_search = String::new();
-						data.new_track = None;
+						data.track_import = None;
 					}
 					Err(e) => error!("{:?}", e),
 				}

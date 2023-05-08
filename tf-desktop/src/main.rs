@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
 use druid::{AppLauncher, WindowDesc};
 
+#[macro_use]
+mod util;
+
 mod command;
 mod state;
 mod ui;

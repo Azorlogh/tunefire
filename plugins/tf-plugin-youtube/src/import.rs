@@ -3,12 +3,37 @@ use std::{iter::once, sync::Arc};
 use anyhow::{anyhow, Result};
 use druid::im;
 use futures::StreamExt;
-use tf_plugin::{ImportPlugin, ImportedItem};
+use tf_plugin::{ImportPlugin, ImportedItem, TrackInfo};
 use tokio::runtime::Runtime;
 use url::Url;
 
 pub struct YoutubeImportPlugin {
 	pub client: ytextract::Client,
+}
+
+fn guesswork(mut track: TrackInfo) -> TrackInfo {
+	// Search for an artist name in the title
+	const SEPARATORS: &[&str] = &[" - ", " – "];
+	for sep in SEPARATORS {
+		if track.title.contains(sep) {
+			let mut parts = track.title.split(sep);
+			track.artists = parts
+				.next()
+				.unwrap()
+				.split(",")
+				.map(|artist| artist.trim().to_owned())
+				.collect();
+			track.title = parts.next().unwrap().to_owned();
+			return track;
+		}
+	}
+
+	// Use channel name
+	track
+		.artists
+		.get_mut(0)
+		.map(|artist| *artist = artist.trim_end_matches(" - Topic").to_owned());
+	track
 }
 
 impl YoutubeImportPlugin {
@@ -31,16 +56,16 @@ impl YoutubeImportPlugin {
 
 					let video = self.client.video(video_id).await?;
 
-					ImportedItem::Track(tf_plugin::TrackInfo {
+					ImportedItem::Track(guesswork(tf_plugin::TrackInfo {
 						url: Arc::new(url.clone()),
 						artists: im::Vector::from_iter(once(video.channel().name().to_owned())),
 						title: video.title().to_owned(),
-					})
+					}))
 				}
 				"playlist" => {
 					let playlist_id: ytextract::playlist::Id = url
 						.query_pairs()
-						.find(|pair| pair.0 == "v")
+						.find(|pair| pair.0 == "list")
 						.ok_or(anyhow!("playlist id missing from the url"))?
 						.1
 						.parse()?;
@@ -51,13 +76,13 @@ impl YoutubeImportPlugin {
 
 					while let Some(video) = videos.next().await {
 						let video = video?;
-						tracks.push(tf_plugin::TrackInfo {
+						tracks.push(guesswork(tf_plugin::TrackInfo {
 							url: Arc::new(url.clone()),
 							artists: im::Vector::from_iter(once(video.channel().name().to_owned())),
 							title: video.title().to_owned(),
-						})
+						}))
 					}
-					ImportedItem::Set(tracks)
+					ImportedItem::Playlist(tracks)
 				}
 				e => return Err(anyhow!("unknown endpoint: {}", e)),
 			})
