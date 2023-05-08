@@ -1,5 +1,5 @@
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClientId(u64);
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct UserId(pub u64);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct ClientToken(u64);
+pub struct UserToken(pub u64);

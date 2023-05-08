@@ -1,19 +1,32 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 package hubdj;
 
 service Hubdj {
   rpc Auth(AuthRequest) returns (AuthResponse) {}
-  rpc GetClient(ClientId) returns (Client) {}
+  rpc GetUser(UserId) returns (User) {}
+  rpc StreamBoothState(google.protobuf.Empty) returns (stream Booth) {}
   rpc SubmitPlaylist(Playlist) returns (Status) {}
 }
 
-message ClientId { uint64 id = 1; }
+message Booth {
+  message Playing {
+    uint64 dj = 1;
+    Track track = 2;
+    repeated Track queue = 3;
+  }
+  optional Playing playing = 1;
+}
 
-message Client {
+message UserId { uint64 id = 1; }
+
+message User {
+  message Queue { repeated Track tracks = 1; }
   uint64 id = 1;
   string name = 2;
-  repeated Track tracks = 3;
+  optional Queue queue = 3;
 }
 
 message AuthRequest { string name = 1; }
@@ -21,7 +34,7 @@ message AuthRequest { string name = 1; }
 message AuthResponse {
   uint64 token = 1;
   uint64 id = 2;
-  repeated uint64 clients = 3;
+  repeated uint64 users = 3;
 }
 
 message Status { bool ok = 1; }

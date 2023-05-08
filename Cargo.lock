@@ -1671,8 +1671,10 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 name = "hubdj-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "druid",
+ "hubdj-core",
  "prost",
  "tokio",
  "tonic",
@@ -1680,12 +1682,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hubdj-core"
+version = "0.1.0"
+
+[[package]]
 name = "hubdj-server"
 version = "0.1.0"
 dependencies = [
+ "hubdj-core",
  "prost",
  "rand",
  "tokio",
+ "tokio-stream",
  "tonic",
  "tonic-build",
  "url",
