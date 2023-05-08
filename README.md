@@ -2,14 +2,12 @@
 
 Tunefire is a modular tag-based music streaming app that connects to multiple streaming services.
 
-### Organizing music with tags
-
-Tunefire makes it easy to manage your music by allowing you to tag songs with custom attributes such as speed, joyfulness, intensity, or any other feature you choose.  
-By filtering songs based on tags, you can create personalized playlists to suit your every mood and occasion.
+It makes it easy to manage your music by allowing you to tag songs with custom attributes such as speed, cheerfulness, loudness, or any other feature you choose.  
+By filtering your library with queries, you can create automated playlists to perfecly match your mood.
 
 ### Multi-source
 
-Tunefire's streaming client is plugin-based, making it simple to add new streaming services.  
+Tunefire's streaming client is plugin-based, allowing it to connect to multiple streaming services.  
 Here is the current implementation status of each planned streaming service.
 
 | service     | Streaming | Search |
