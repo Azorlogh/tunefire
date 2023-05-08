@@ -28,6 +28,7 @@ souvlaki = "0.5.1"
 crossbeam-channel = "0.5.6"
 palette = "0.6.1"
 rand = "0.8"
+itertools = "0.10"
 
 tf-plugin = { path = "../tf-plugin" }
 tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }

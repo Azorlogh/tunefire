@@ -1,7 +1,4 @@
-use std::{
-	collections::{HashMap, HashSet},
-	path::Path,
-};
+use std::{collections::HashSet, path::Path};
 
 use anyhow::{anyhow, Result};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -34,14 +31,9 @@ impl Client {
 		Ok(Client { db, tracks, tags })
 	}
 
-	pub fn add_track(&mut self, source: &str, artist: &str, title: &str) -> Result<Uuid> {
+	pub fn add_track(&mut self, track: &Track) -> Result<Uuid> {
 		let id = Uuid::new_v4();
-		let track = serde_json::to_vec(&Track {
-			source: source.to_owned(),
-			artist: artist.to_owned(),
-			title: title.to_owned(),
-			tags: HashMap::default(),
-		})?;
+		let track = serde_json::to_vec(track)?;
 		self.tracks.insert(id, track)?;
 		Ok(id)
 	}

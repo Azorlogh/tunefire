@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
 	pub source: String,
-	pub artist: String,
+	pub artists: Vec<String>,
 	pub title: String,
 	pub tags: HashMap<String, f32>,
 }

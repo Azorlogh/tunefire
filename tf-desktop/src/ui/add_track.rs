@@ -1,15 +1,19 @@
 use druid::{
+	im,
 	keyboard_types::Key,
-	widget::{Container, Flex, Label, TextBox},
+	widget::{Container, Flex, Label, List, TextBox},
 	Widget, WidgetExt,
 };
 
 use crate::{
 	command,
+	data::enumerate::{deenumerate, lens_enumerate},
 	state::NewTrack,
 	widget::{
 		common::focusable_button::FocusableButton,
-		controllers::{AutoFocus, ClickAfter, ClickBlocker, OnKey},
+		controllers::{
+			AutoFocus, ClickAfter, ClickBlocker, ItemDeleter, OnFocus, OnKey, ITEM_DELETE,
+		},
 	},
 };
 
@@ -26,12 +30,37 @@ pub fn add_track() -> impl Widget<NewTrack> {
 						.expand_width(),
 				)
 				.with_child(
-					TextBox::new()
-						.with_placeholder("Artist")
-						.controller(AutoFocus)
-						.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
-						.lens(NewTrack::artist)
-						.expand_width(),
+					Flex::row()
+						.with_flex_child(
+							List::new(|| {
+								TextBox::new()
+									.with_placeholder("Artist")
+									.lens(deenumerate())
+									.controller(AutoFocus)
+									.controller(OnKey::new(Key::Enter, |ctx, _, _| {
+										ctx.focus_next()
+									}))
+									.controller(OnFocus::lost(
+										|ctx, data: &mut (usize, String), _| {
+											if data.1 == "" {
+												ctx.submit_notification(ITEM_DELETE.with(data.0));
+											}
+										},
+									))
+									.fix_width(128.0)
+							})
+							.horizontal()
+							.lens(lens_enumerate())
+							.controller(ItemDeleter),
+							1.0,
+						)
+						.with_child(FocusableButton::new("+").on_click(
+							|_, data: &mut im::Vector<String>, _| {
+								data.push_back(String::new());
+							},
+						))
+						.expand_width()
+						.lens(NewTrack::artists),
 				)
 				.with_child(
 					TextBox::new()
@@ -43,7 +72,7 @@ pub fn add_track() -> impl Widget<NewTrack> {
 				.with_default_spacer()
 				.with_child(
 					FocusableButton::new("Add").on_click(|ctx, data: &mut NewTrack, _| {
-						ctx.submit_command(command::TRACK_ADD.with(data.clone()));
+						ctx.submit_command(command::TRACK_ADD.with(data.get_track()));
 					}),
 				)
 				.padding(10.0),

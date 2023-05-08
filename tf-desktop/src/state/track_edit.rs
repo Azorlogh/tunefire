@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct TrackEdit {
 	pub id: Rc<Uuid>,
 	pub title: String,
+	pub artists: im::Vector<String>,
 	pub source: String,
 	pub tags: im::Vector<(String, f32)>,
 	pub tag_suggestions: TagSuggestions,
@@ -24,6 +25,7 @@ impl TrackEdit {
 		Self {
 			id: Rc::new(id),
 			title: track.title,
+			artists: im::Vector::from_iter(track.artists.into_iter()),
 			source: track.source,
 			tags: im::Vector::from_iter(track.tags.clone()),
 			tag_suggestions: TagSuggestions {
@@ -44,7 +46,7 @@ impl TrackEdit {
 	pub fn get_track(&self) -> Track {
 		Track {
 			source: self.source.clone(),
-			artist: String::new(),
+			artists: self.artists.iter().cloned().collect(),
 			title: self.title.clone(),
 			tags: HashMap::from_iter(self.tags.iter().cloned()),
 		}

@@ -45,7 +45,7 @@ impl Filter {
 					value < threshold
 				}
 			}
-			Filter::Artist(artist) => track.artist == *artist,
+			Filter::Artist(artist) => track.artists.contains(artist),
 			Filter::And(f0, f1) => f0.matches(track) && f1.matches(track),
 			Filter::Or(f0, f1) => f0.matches(track) && f1.matches(track),
 			Filter::Not(f) => !f.matches(track),

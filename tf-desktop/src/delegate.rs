@@ -6,12 +6,7 @@ use rand::seq::SliceRandom;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::{
-	command,
-	controller::playback,
-	state::{NewTrack, TrackEdit},
-	State,
-};
+use crate::{command, controller::playback, state::TrackEdit, State};
 
 pub struct Delegate {
 	db: tf_db::Client,
@@ -113,12 +108,8 @@ impl AppDelegate<State> for Delegate {
 
 			// db
 			_ if cmd.is(command::TRACK_ADD) => {
-				let NewTrack {
-					source,
-					artist,
-					title,
-				} = cmd.get_unchecked::<NewTrack>(command::TRACK_ADD);
-				match self.db.add_track(source, artist, title) {
+				let track = cmd.get_unchecked::<tf_db::Track>(command::TRACK_ADD);
+				match self.db.add_track(track) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
 						data.tracks.push_back((id, track).into());
