@@ -1,6 +1,7 @@
 use druid::{
+	im,
 	keyboard_types::Key,
-	widget::{Container, Flex, Label, TextBox},
+	widget::{Button, Container, Flex, Label, List, TextBox},
 	Widget, WidgetExt,
 };
 
@@ -26,12 +27,20 @@ pub fn add_track() -> impl Widget<NewTrack> {
 						.expand_width(),
 				)
 				.with_child(
-					TextBox::new()
-						.with_placeholder("Artist")
-						.controller(AutoFocus)
-						.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
-						.lens(NewTrack::artist)
-						.expand_width(),
+					Flex::row()
+						.with_child(List::new(|| {
+							TextBox::new()
+								.with_placeholder("Artist")
+								.controller(AutoFocus)
+								.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
+								.expand_width()
+						}))
+						.with_child(Button::new("+").on_click(
+							|_, data: &mut im::Vector<String>, _| {
+								data.push_back(String::new());
+							},
+						))
+						.lens(NewTrack::artists),
 				)
 				.with_child(
 					TextBox::new()

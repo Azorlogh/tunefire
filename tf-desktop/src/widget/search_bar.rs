@@ -1,6 +1,7 @@
-use std::time::Duration;
+use std::{iter::once, time::Duration};
 
 use druid::{
+	im,
 	keyboard_types::Key,
 	lens::{self, Field},
 	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
@@ -81,13 +82,13 @@ impl Widget<WData> for SearchBar {
 				{
 					NewTrack {
 						source: track.url.to_string(),
-						artist: track.artist,
+						artists: track.artist,
 						title: track.title,
 					}
 				} else {
 					NewTrack {
 						source: data.data.to_owned(),
-						artist: String::new(),
+						artists: im::Vector::from_iter(once(String::new())),
 						title: String::new(),
 					}
 				};
@@ -166,7 +167,15 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 			)
 			.with_flex_child(
 				Label::new(|data: &Ctx<Option<usize>, (usize, SearchResult)>, _: &_| {
-					format!("{} - {}", data.data.1.artist, data.data.1.title)
+					let artists = data
+						.data
+						.1
+						.artist
+						.iter()
+						.map(|s| (*s).to_owned())
+						.collect::<Vec<String>>()
+						.join(", ");
+					format!("{} - {}", artists, data.data.1.title)
 				}),
 				1.0,
 			)

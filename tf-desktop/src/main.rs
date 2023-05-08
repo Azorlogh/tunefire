@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use druid::{AppLauncher, WindowDesc};
 
 mod command;
-// mod plugins;
 mod state;
 mod ui;
 pub use state::State;

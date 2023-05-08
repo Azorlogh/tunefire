@@ -1,8 +1,8 @@
-use druid::{Data, Lens};
+use druid::{im, Data, Lens};
 
 #[derive(Clone, Default, Data, Lens)]
 pub struct NewTrack {
 	pub source: String,
 	pub title: String,
-	pub artist: String,
+	pub artists: im::Vector<String>,
 }

@@ -45,7 +45,7 @@ pub fn ui() -> impl Widget<State> {
 			)
 			.with_child(EnvScope::new(
 				|env, _| env.set(druid::theme::TEXT_COLOR, env.get(theme::FOREGROUND_DIM)),
-				Label::new(|item: &Track, _: &_| item.artist.to_owned())
+				Label::new(|item: &Track, _: &_| item.format_artists())
 					.with_text_size(13.0)
 					.fix_height(10.0),
 			))

@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{iter::once, sync::Arc};
 
 use anyhow::Result;
-use druid::piet::ImageFormat;
+use druid::{im, piet::ImageFormat};
 use tf_plugin::SearchPlugin;
 
 use crate::{api, FRAGMENT};
@@ -55,7 +55,7 @@ impl SearchPlugin for SoundcloudSearchPlugin {
 					});
 					Some(tf_plugin::SearchResult {
 						url: Arc::new(permalink_url),
-						artist: user.username,
+						artist: im::Vector::from_iter(once(user.username)),
 						title,
 						artwork,
 					})

@@ -107,7 +107,7 @@ impl PlaybackController {
 			Some(track) => {
 				self.media_controls
 					.as_mut()
-					.map(|c| c.set_metadata(&track.artist, &track.title));
+					.map(|c| c.set_metadata(&track.format_artists(), &track.title));
 
 				self.media_controls.as_mut().map(|c| {
 					c.set_is_playing(true).ok();

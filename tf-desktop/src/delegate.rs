@@ -115,10 +115,10 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::TRACK_ADD) => {
 				let NewTrack {
 					source,
-					artist,
+					artists,
 					title,
 				} = cmd.get_unchecked::<NewTrack>(command::TRACK_ADD);
-				match self.db.add_track(source, artist, title) {
+				match self.db.add_track(source, artists.iter(), title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
 						data.tracks.push_back(track.into());

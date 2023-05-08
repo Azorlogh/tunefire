@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use druid::{Data, ImageBuf, Lens};
+use druid::{im, Data, ImageBuf, Lens};
 pub use tf_player::{self as player, SourcePlugin};
 use url::Url;
 
@@ -22,7 +22,7 @@ pub trait SearchPlugin: Send {
 #[derive(Debug, Clone, Data, Lens)]
 pub struct SearchResult {
 	pub url: Arc<Url>,
-	pub artist: String,
+	pub artist: im::Vector<String>,
 	pub title: String,
 	pub artwork: Option<ImageBuf>,
 }

@@ -58,7 +58,7 @@ pub fn ui() -> impl Widget<MediaBarState> {
 		));
 
 	let track_info = Maybe::new(
-		|| Label::new(|data: &Track, _: &_| format!("{} - {}", data.artist, data.title)),
+		|| Label::new(|data: &Track, _: &_| format!("{} - {}", data.format_artists(), data.title)),
 		|| SizedBox::empty(),
 	)
 	.expand_width();
