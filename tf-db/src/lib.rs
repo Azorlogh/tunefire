@@ -57,29 +57,6 @@ impl Client {
 		Ok(())
 	}
 
-	// pub fn get_track_tags(&self, id: Uuid) -> Result<HashMap<String, f32>> {
-
-	// 	let mut stmt = self.conn.prepare(
-	// 		r#"
-	// 		SELECT name, "value"
-	// 		FROM track_tags
-	// 		INNER JOIN tracks ON track_tags.track_id = tracks.id
-	// 		INNER JOIN tags ON track_tags.tag_id = tags.id
-	// 		WHERE tracks.id = ?
-	// 	"#,
-	// 	)?;
-
-	// 	let tags = stmt
-	// 		.query_map(&[&id.to_string()], |row| Ok((row.get(0)?, row.get(1)?)))
-	// 		.unwrap();
-	// 	let mut result = HashMap::new();
-	// 	for tag in tags.into_iter() {
-	// 		let (name, value) = tag.unwrap();
-	// 		result.insert(name, value);
-	// 	}
-	// 	Ok(result)
-	// }
-
 	pub fn get_track(&self, id: Uuid) -> Result<Track> {
 		Ok(serde_json::from_slice(
 			self.tracks
@@ -88,16 +65,6 @@ impl Client {
 				.as_ref(),
 		)?)
 	}
-
-	// fn get_tag_id(&self, name: &str) -> Result<Uuid> {
-	// 	let mut stmt = self.conn.prepare("SELECT id FROM tags WHERE name = ?")?;
-	// 	let id = stmt
-	// 		.query_row(&[name], |row| {
-	// 			Ok(Uuid::try_parse(&row.get::<_, String>(0)?).unwrap())
-	// 		})
-	// 		.map_err(|e| anyhow!("failed to get tag id: {}", e))?;
-	// 	Ok(id)
-	// }
 
 	pub fn iter_tracks(&mut self) -> impl Iterator<Item = Result<(Uuid, Track)>> {
 		self.tracks.iter().map(|kv| {
@@ -134,7 +101,6 @@ impl Client {
 
 	pub fn search_tag(&mut self, q: &str, limit: usize) -> Result<Vec<(String, Vec<usize>)>> {
 		let matcher = SkimMatcherV2::default();
-
 		let mut matches = self
 			.get_tags()?
 			.into_iter()
