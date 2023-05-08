@@ -1,6 +1,6 @@
 use druid::{
 	BoxConstraints, Color, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
-	Point, Rect, RenderContext, Selector, Size, UpdateCtx, Widget, WidgetPod,
+	Point, RenderContext, Selector, Size, UpdateCtx, Widget, WidgetPod,
 };
 
 use crate::state::State;
@@ -136,9 +136,7 @@ impl Widget<State> for Overlay {
 			let origin = child
 				.origin
 				.unwrap_or_else(|| (bc.max().to_vec2() / 2.0 - size.to_vec2() / 2.0).to_point());
-			child
-				.widget
-				.set_layout_rect(ctx, Rect::from_origin_size(origin, size));
+			child.widget.set_origin(ctx, origin);
 		}
 		bc.max()
 	}

@@ -12,7 +12,7 @@ tokio = { version = "1.28", features = ["full"] }
 tonic = "0.9"
 prost = "0.11"
 clap = { version = "4.2", features = ["derive"] }
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
+druid = { workspace = true, features = ["im", "raw-win-handle"] }
 hubdj-core = { path = "../hubdj-core" }
 
 [build-dependencies]

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
-druid = { git = "https://github.com/linebender/druid.git", features = ["im", "raw-win-handle"] }
+druid = { workspace = true, features = ["im", "raw-win-handle"] }
 percent-encoding = "2.2.0"
 tracing = "0.1.37"
 tf-plugin = { path = "../../tf-plugin" }

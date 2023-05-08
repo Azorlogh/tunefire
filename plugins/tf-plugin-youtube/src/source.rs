@@ -1,4 +1,4 @@
-use std::{sync::mpsc, time::Duration};
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use symphonia::core::{io::MediaSourceStream, probe::Hint};
@@ -24,18 +24,16 @@ impl YoutubeSourcePlugin {
 			.parse()?;
 
 		let rt = Runtime::new().unwrap();
-		let (tx, rx) = mpsc::channel();
-		rt.block_on(async {
-			let video = self.client.video(video_id).await.unwrap();
+		let (video, stream) = rt.block_on(async {
+			let video = self.client.video(video_id).await?;
 			let streams = video
 				.streams()
 				.await
 				.unwrap()
 				.filter(|s| s.is_audio())
 				.collect::<Vec<_>>();
-			tx.send((video, streams[1].clone())).unwrap();
-		});
-		let (video, stream) = rx.recv().unwrap();
+			Result::<_, anyhow::Error>::Ok((video, streams[1].clone()))
+		})?;
 
 		let duration = video.duration();
 

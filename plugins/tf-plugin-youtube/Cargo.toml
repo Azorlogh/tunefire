@@ -9,5 +9,5 @@ tracing = "0.1.37"
 tf-plugin = { path = "../../tf-plugin" }
 symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = ["mp3", "isomp4", "aac"] }
 url = "2.3.1"
-ytextract = {version = "0.11" }
+ytextract = { git = "https://github.com/Azorlogh/ytextract" }
 tokio = { version="1.20.1", features = ["rt-multi-thread"] }

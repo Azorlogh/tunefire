@@ -1,5 +1,5 @@
 use druid::{
-	kurbo::{Point, Rect, Size},
+	kurbo::{Point, Size},
 	BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
 	UpdateCtx, Widget, WidgetPod,
 };
@@ -49,7 +49,7 @@ impl<T: Data> Widget<T> for Stack<T> {
 		let mut size = Size::ZERO;
 		for child in &mut self.children {
 			size = child.layout(ctx, bc, data, env);
-			child.set_layout_rect(ctx, Rect::from_origin_size(Point::ORIGIN, size))
+			child.set_origin(ctx, Point::ORIGIN);
 		}
 		size
 	}

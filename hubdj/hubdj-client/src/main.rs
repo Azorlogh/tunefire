@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let controller = ClientController::new().await?;
 
 	let state = State::Disconnected(StateDisconnected {
-		name: String::from("Bob"),
+		name: String::from(""),
 	});
 
 	AppLauncher::with_window(WindowDesc::new(ui(controller)))
@@ -97,7 +97,11 @@ fn ui(client_controller: ClientController) -> impl Widget<State> {
 
 fn disconnected_ui() -> impl Widget<StateDisconnected> {
 	Flex::column()
-		.with_child(TextBox::new().lens(StateDisconnected::name))
+		.with_child(
+			TextBox::new()
+				.with_placeholder("Your name")
+				.lens(StateDisconnected::name),
+		)
 		.with_child(
 			Button::new("Connect")
 				.on_click(|ctx, _data, _env| ctx.submit_command(CLIENT_CONNECT_REQ)),

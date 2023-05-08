@@ -14,7 +14,7 @@ Here is the current implementation status of each planned streaming service.
 | ----------- | --------- | ------ |
 | Local files | ✅         | ❌      |
 | Soundcloud  | ✅         | ✅      |
-| Youtube     | 🔃        | ❌      |
+| Youtube     | ✅        | ❌      |
 | Spotify     | ❌         | ❌      |
 
 
@@ -22,7 +22,7 @@ Here is the current implementation status of each planned streaming service.
 🔃 Work in progress  
 ❌ Unimplemented  
 
-# HubDJ
+# HubDJ (Draft)
 
 This repo also contains HubDJ, an app that lets you host listening sessions with you friends, letting you take turns playing songs.
 
