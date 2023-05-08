@@ -13,6 +13,10 @@ pub trait Plugin {
 	fn get_source_plugin(&self) -> Option<Box<dyn SourcePlugin>> {
 		None
 	}
+
+	fn get_import_plugin(&self) -> Option<Box<dyn ImportPlugin>> {
+		None
+	}
 }
 
 pub trait SearchPlugin: Send {
@@ -25,4 +29,19 @@ pub struct SearchResult {
 	pub artists: im::Vector<String>,
 	pub title: String,
 	pub artwork: Option<ImageBuf>,
+}
+
+pub trait ImportPlugin: Send {
+	fn import(&mut self, url: &Url) -> Option<Result<ImportedItem>>;
+}
+
+pub enum ImportedItem {
+	Track(TrackInfo),
+	Set(Vec<TrackInfo>),
+}
+
+pub struct TrackInfo {
+	pub url: Arc<Url>,
+	pub artists: im::Vector<String>,
+	pub title: String,
 }

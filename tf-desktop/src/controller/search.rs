@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Result;
 use druid::{
 	im, widget::Controller, Env, Event, EventCtx, ExtEventSink, LifeCycle, LifeCycleCtx, Selector,
 	Widget, WidgetId,
@@ -18,10 +17,6 @@ pub const SEARCH_TRACK_RESULTS: Selector<Vec<SearchResult>> =
 pub struct SearchController;
 
 impl SearchController {
-	pub fn new() -> Result<Self> {
-		Ok(Self)
-	}
-
 	pub fn spawn_search_threads(
 		&mut self,
 		plugins: &im::Vector<Arc<RwLock<Box<dyn Plugin>>>>,
