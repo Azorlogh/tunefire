@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
-	pub id: Uuid,
 	pub source: String,
 	pub artist: String,
 	pub title: String,

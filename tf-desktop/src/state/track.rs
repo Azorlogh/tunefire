@@ -12,10 +12,10 @@ pub struct Track {
 	pub tags: im::HashMap<ArcStr, f32>,
 }
 
-impl From<tf_db::Track> for Track {
-	fn from(t: tf_db::Track) -> Self {
+impl From<(Uuid, tf_db::Track)> for Track {
+	fn from((id, t): (Uuid, tf_db::Track)) -> Self {
 		Self {
-			id: Arc::new(t.id),
+			id: Arc::new(id),
 			source: t.source.into(),
 			title: t.title.into(),
 			artist: t.artist.into(),
