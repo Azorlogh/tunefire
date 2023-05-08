@@ -1,6 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use druid::{im, Data, Lens};
+use tf_db::Track;
 use uuid::Uuid;
 
 #[derive(Clone, Data, Lens)]
@@ -19,9 +20,9 @@ pub struct TagSuggestions {
 }
 
 impl TrackEdit {
-	pub fn new(track: tf_db::Track) -> Self {
+	pub fn new(id: Uuid, track: tf_db::Track) -> Self {
 		Self {
-			id: Rc::new(track.id),
+			id: Rc::new(id),
 			title: track.title,
 			source: track.source,
 			tags: im::Vector::from_iter(track.tags.clone()),
@@ -38,5 +39,14 @@ impl TrackEdit {
 			.filter(|t| !t.0.is_empty())
 			.cloned()
 			.collect()
+	}
+
+	pub fn get_track(&self) -> Track {
+		Track {
+			source: self.source.clone(),
+			artist: String::new(),
+			title: self.title.clone(),
+			tags: HashMap::from_iter(self.tags.iter().cloned()),
+		}
 	}
 }

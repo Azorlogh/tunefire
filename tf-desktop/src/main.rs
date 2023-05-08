@@ -49,6 +49,6 @@ fn connect_to_db() -> Result<tf_db::Client> {
 	let dirs = directories::ProjectDirs::from("", "Azorlogh", "tunefire")
 		.expect("failed to get data directory");
 	std::fs::create_dir_all(dirs.data_dir())?;
-	let db_path = dirs.data_dir().join("db.sqlite");
+	let db_path = dirs.data_dir().join("db.slab");
 	tf_db::Client::new(db_path)
 }

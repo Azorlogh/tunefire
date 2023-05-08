@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use druid::AppDelegate;
+use druid::{im, AppDelegate};
 use rand::seq::SliceRandom;
 use tracing::error;
 use uuid::Uuid;
@@ -23,7 +23,7 @@ impl Delegate {
 	}
 
 	fn apply_track_edit(&mut self, edit: TrackEdit) -> Result<()> {
-		self.db.set_tags(*edit.id, &edit.get_tags())?;
+		self.db.set_track(*edit.id, &edit.get_track())?;
 		Ok(())
 	}
 }
@@ -90,7 +90,7 @@ impl AppDelegate<State> for Delegate {
 					self.apply_track_edit(track_edit).unwrap();
 				}
 				if let Ok(track) = self.db.get_track(*id) {
-					data.track_edit = Some(TrackEdit::new(track));
+					data.track_edit = Some(TrackEdit::new(*id, track));
 				}
 				druid::Handled::Yes
 			}
@@ -121,7 +121,7 @@ impl AppDelegate<State> for Delegate {
 				match self.db.add_track(source, artist, title) {
 					Ok(id) => {
 						let track = self.db.get_track(id).unwrap();
-						data.tracks.push_back(track.into());
+						data.tracks.push_back((id, track).into());
 						data.new_track_search = String::new();
 						data.new_track = None;
 					}
@@ -146,8 +146,9 @@ impl AppDelegate<State> for Delegate {
 			_ if cmd.is(command::TAG_SEARCH) => {
 				let q = cmd.get_unchecked::<String>(command::TAG_SEARCH);
 				if q != "" {
-					let results = self.db.search_tag(q).unwrap();
-					data.track_edit.as_mut().unwrap().tag_suggestions.tags = results.into();
+					let results = self.db.search_tag(q, 3).unwrap();
+					data.track_edit.as_mut().unwrap().tag_suggestions.tags =
+						im::Vector::from_iter(results.into_iter().map(|(tag, _)| tag));
 				}
 				druid::Handled::Yes
 			}
