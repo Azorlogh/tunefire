@@ -35,11 +35,13 @@ pub trait ImportPlugin: Send {
 	fn import(&mut self, url: &Url) -> Option<Result<ImportedItem>>;
 }
 
+#[derive(Debug, Clone)]
 pub enum ImportedItem {
 	Track(TrackInfo),
 	Set(Vec<TrackInfo>),
 }
 
+#[derive(Debug, Clone)]
 pub struct TrackInfo {
 	pub url: Arc<Url>,
 	pub artists: im::Vector<String>,

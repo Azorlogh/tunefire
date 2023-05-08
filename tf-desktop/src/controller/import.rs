@@ -2,7 +2,7 @@ use druid::{widget::Controller, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, S
 use tf_plugin::ImportedItem;
 use tracing::warn;
 
-use crate::{state::NewTrack, State};
+use crate::{command, state::NewTrack, State};
 
 pub const IMPORT_REQUEST: Selector<String> = Selector::new("plugin.import.request");
 
@@ -28,14 +28,18 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 							.filter_map(|p| p.read().get_import_plugin())
 						{
 							if let Some(res) = plugin.import(&url) {
+								println!("RES: {:?}", res);
 								match res {
 									Ok(item) => match item {
 										ImportedItem::Track(track) => {
-											data.new_track = Some(NewTrack {
-												source: url.to_string(),
-												title: track.title,
-												artists: track.artists,
-											})
+											println!("overwriting newtraack");
+											ctx.submit_command(command::UI_TRACK_ADD_OPEN.with(
+												NewTrack {
+													source: url.to_string(),
+													title: track.title,
+													artists: track.artists,
+												},
+											));
 										}
 										_ => todo!(),
 									},

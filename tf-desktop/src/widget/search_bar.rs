@@ -18,7 +18,7 @@ use super::{
 };
 use crate::{
 	command,
-	controller::search,
+	controller::{import::IMPORT_REQUEST, search},
 	data::ctx::Ctx,
 	state::{NewTrack, TrackSuggestions},
 	theme,
@@ -86,6 +86,7 @@ impl Widget<WData> for SearchBar {
 						title: track.title,
 					}
 				} else {
+					ctx.submit_command(IMPORT_REQUEST.with(data.data.to_owned()));
 					NewTrack {
 						source: data.data.to_owned(),
 						artists: im::Vector::from_iter(once(String::new())),
@@ -100,7 +101,6 @@ impl Widget<WData> for SearchBar {
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
 			Event::Timer(token) if token == &self.search_timer => {
-				println!("SEARCH TRAKC REQURSEST");
 				ctx.submit_command(search::SEARCH_TRACK_REQUEST.with(data.data.to_owned()));
 			}
 			_ => {}
