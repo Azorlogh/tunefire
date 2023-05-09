@@ -9,10 +9,10 @@ use druid::{
 use crate::{
 	command,
 	data::{
-		ctx::Ctx,
+		ctx::{Ctx, CtxEnumerate},
 		enumerate::{deenumerate, lens_enumerate},
 	},
-	state::TrackEdit,
+	state::{TagSuggestions, TrackEdit},
 	widget::{
 		common::focusable_button::FocusableButton,
 		controllers::{ItemDeleter, OnFocus, OnKey, ITEM_DELETE},
@@ -46,7 +46,7 @@ pub fn ui() -> impl Widget<TrackEdit> {
 					})
 					.horizontal()
 					.lens(lens_enumerate())
-					.controller(ItemDeleter),
+					.controller(ItemDeleter::new()),
 					1.0,
 				)
 				.with_child(FocusableButton::new("+").on_click(
@@ -64,17 +64,22 @@ pub fn ui() -> impl Widget<TrackEdit> {
 				.with_child(TextBox::new().lens(TrackEdit::source)),
 		)
 		.with_default_spacer()
-		.with_child(List::new(|| TagEdit::new()).lens(Ctx::make(
-			lens::Map::new(
-				|s: &TrackEdit| s.tag_suggestions.clone(),
-				|s, i| {
-					if !i.same(&s.tag_suggestions) {
-						s.tag_suggestions = i;
-					}
-				},
-			),
-			TrackEdit::tags,
-		)))
+		.with_child(
+			List::new(|| TagEdit::new())
+				.lens(Ctx::enumerate())
+				.controller(ItemDeleter::<Ctx<TagSuggestions, im::Vector<(String, f32)>>>::new())
+				.lens(Ctx::make(
+					lens::Map::new(
+						|s: &TrackEdit| s.tag_suggestions.clone(),
+						|s, i| {
+							if !i.same(&s.tag_suggestions) {
+								s.tag_suggestions = i;
+							}
+						},
+					),
+					TrackEdit::tags,
+				)),
+		)
 		.with_child(
 			FocusableButton::new("+").on_click(|_, data: &mut TrackEdit, _| {
 				data.tags.push_back(("".to_owned(), 0.5));

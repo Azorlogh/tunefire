@@ -99,7 +99,8 @@ impl Widget<f32> for Knob {
 		_data: &f32,
 		_env: &Env,
 	) -> Size {
-		bc.max()
+		let min = bc.max().min_side();
+		Size::new(min, min)
 	}
 
 	fn paint(&mut self, ctx: &mut PaintCtx, data: &f32, env: &Env) {

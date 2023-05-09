@@ -122,7 +122,7 @@ fn track_artists() -> impl Widget<NewTrack> {
 			})
 			.horizontal()
 			.lens(lens_enumerate())
-			.controller(ItemDeleter),
+			.controller(ItemDeleter::new()),
 		)
 		.with_child(
 			FocusableButton::new("+").on_click(|_, data: &mut im::Vector<String>, _| {

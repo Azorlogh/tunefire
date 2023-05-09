@@ -9,7 +9,7 @@ pub enum TrackImport {
 #[derive(Clone, Default, Data, Lens)]
 pub struct NewTrackBulk {
 	pub tracks: im::Vector<NewTrack>,
-	pub tag: Option<(String, f32)>,
+	pub tag: im::Vector<(String, f32)>,
 }
 
 #[derive(Clone, Default, Data, Lens)]

@@ -1,4 +1,6 @@
-use druid::{widget::Controller, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Selector, Widget};
+use druid::{
+	im, widget::Controller, Env, Event, EventCtx, LifeCycle, LifeCycleCtx, Selector, Widget,
+};
 use tf_plugin::ImportedItem;
 use tracing::warn;
 
@@ -55,7 +57,7 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 																artists: track.artists,
 															})
 															.collect(),
-														tag: None,
+														tag: im::Vector::new(),
 													}),
 												),
 											);
