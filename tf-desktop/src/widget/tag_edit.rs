@@ -1,13 +1,15 @@
-use druid::{BoxConstraints, Point, Size, Widget, WidgetExt, WidgetPod};
+use druid::{lens, BoxConstraints, LensExt, Point, Size, Widget, WidgetExt, WidgetPod};
 
 use super::{common::knob::Knob, tag_text_box::TagTextBox};
 use crate::{data::ctx::Ctx, state::TagSuggestions, theme};
 
-type Data = Ctx<TagSuggestions, (String, f32)>;
+type Data = Ctx<TagSuggestions, (u128, (String, f32))>;
 
+/// This widget is required because I want the Knob's side length to depend on the TextBox's height
+/// AFAICT this isn't possible with simple flex layouts
 pub struct TagEdit {
 	text_box: WidgetPod<Data, Box<dyn Widget<Data>>>,
-	knob: WidgetPod<f32, Box<dyn Widget<f32>>>,
+	knob: WidgetPod<Data, Box<dyn Widget<Data>>>,
 }
 
 impl TagEdit {
@@ -15,9 +17,9 @@ impl TagEdit {
 		Self {
 			text_box: WidgetPod::new(
 				TagTextBox::new()
-					.lens(Ctx::map(druid::lens::Field::new(
-						|x: &(String, f32)| &x.0,
-						|x| &mut x.0,
+					.lens(Ctx::map((
+						lens!((u128, (String, f32)), 0),
+						lens!((u128, (String, f32)), 1.0),
 					)))
 					.boxed(),
 			),
@@ -26,6 +28,7 @@ impl TagEdit {
 					.env_scope(|env, _| {
 						env.set(druid::theme::FOREGROUND_DARK, env.get(theme::ACCENT))
 					})
+					.lens(Ctx::data().then(lens!((u128, (String, f32)), 1.1)))
 					.boxed(),
 			),
 		}
@@ -41,7 +44,7 @@ impl Widget<Data> for TagEdit {
 		env: &druid::Env,
 	) {
 		self.text_box.event(ctx, event, data, env);
-		self.knob.event(ctx, event, &mut data.data.1, env);
+		self.knob.event(ctx, event, data, env);
 	}
 
 	fn lifecycle(
@@ -52,7 +55,7 @@ impl Widget<Data> for TagEdit {
 		env: &druid::Env,
 	) {
 		self.text_box.lifecycle(ctx, event, data, env);
-		self.knob.lifecycle(ctx, event, &data.data.1, env);
+		self.knob.lifecycle(ctx, event, data, env);
 	}
 
 	fn update(
@@ -63,7 +66,7 @@ impl Widget<Data> for TagEdit {
 		env: &druid::Env,
 	) {
 		self.text_box.update(ctx, data, env);
-		self.knob.update(ctx, &data.data.1, env);
+		self.knob.update(ctx, data, env);
 	}
 
 	fn layout(
@@ -78,7 +81,7 @@ impl Widget<Data> for TagEdit {
 			Size::new(0.0, 0.0),
 			Size::new(text_box_size.height, text_box_size.height),
 		);
-		let knob_size = self.knob.layout(ctx, &knob_bc, &data.data.1, env);
+		let knob_size = self.knob.layout(ctx, &knob_bc, data, env);
 
 		let text_box_bc = BoxConstraints::tight(Size::new(
 			text_box_size.width - knob_size.width,
@@ -97,6 +100,6 @@ impl Widget<Data> for TagEdit {
 
 	fn paint(&mut self, ctx: &mut druid::PaintCtx, data: &Data, env: &druid::Env) {
 		self.text_box.paint(ctx, data, env);
-		self.knob.paint(ctx, &data.data.1, env);
+		self.knob.paint(ctx, data, env);
 	}
 }

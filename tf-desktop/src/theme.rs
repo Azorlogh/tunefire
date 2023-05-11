@@ -46,8 +46,8 @@ pub fn apply(env: &mut Env, _data: &State) {
 		env.set(TEXT_COLOR, colors::FOREGROUND);
 		env.set(CURSOR_COLOR, colors::FOREGROUND);
 
-		env.set(BUTTON_DARK, color(0x282C34));
-		env.set(BUTTON_LIGHT, color(0x282C34));
+		env.set(BUTTON_DARK, colors::BACKGROUND_HIGHLIGHT1);
+		env.set(BUTTON_LIGHT, colors::BACKGROUND_HIGHLIGHT1);
 
 		env.set(BORDER_LIGHT, color(0xFFFFFF));
 		env.set(BORDER_DARK, color(0x21252b));

@@ -74,7 +74,7 @@ impl<T: Data> Dropdown<T> {
 					.window_size_policy(WindowSizePolicy::Content)
 					.resizable(false)
 					.show_titlebar(false),
-				widget.controller(DropedCtrl {
+				widget.controller(ClosedNotifier {
 					parent: ctx.widget_id(),
 				}),
 				data.clone(),
@@ -85,11 +85,11 @@ impl<T: Data> Dropdown<T> {
 	}
 }
 
-struct DropedCtrl {
+struct ClosedNotifier {
 	parent: WidgetId,
 }
 
-impl<T, W: Widget<T>> Controller<T, W> for DropedCtrl {
+impl<T, W: Widget<T>> Controller<T, W> for ClosedNotifier {
 	fn event(&mut self, child: &mut W, ctx: &mut EventCtx, event: &Event, data: &mut T, env: &Env) {
 		if let Event::WindowDisconnected = event {
 			ctx.submit_command(DROPDOWN_CLOSED.to(self.parent));

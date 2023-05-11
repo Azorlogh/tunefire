@@ -12,28 +12,34 @@ use tf_player::player;
 use self::media_bar::MediaBarState;
 use crate::{
 	command,
-	controller::{playback::PlaybackController, search::SearchController},
+	controller::{
+		import::ImportController, playback::PlaybackController, search::SearchController,
+	},
 	data::ctx::Ctx,
 	theme,
 	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},
 	State,
 };
 
-mod add_track;
 mod media_bar;
 mod queue;
 mod track_edit;
+mod track_import;
 mod track_list;
 
-pub fn ui() -> impl Widget<State> {
+pub fn ui(db: &tf_db::Client) -> impl Widget<State> {
 	let query_box = query_box();
 
+	let track_edit_db = db.clone();
 	let main_view = Flex::row()
 		.with_flex_child(
 			Scroll::new(track_list::ui()).vertical().expand_height(),
 			1.0,
 		)
-		.with_child(Maybe::new(|| track_edit::ui(), || SizedBox::empty()).lens(State::track_edit));
+		.with_child(
+			Maybe::new(move || track_edit::ui(&track_edit_db), || SizedBox::empty())
+				.lens(State::track_edit),
+		);
 
 	let mut root = Flex::column();
 	root.add_default_spacer();
@@ -62,15 +68,21 @@ pub fn ui() -> impl Widget<State> {
 		)),
 	);
 
+	let track_import_db = db.clone();
 	Stack::new()
 		.with_child(
 			root.padding(10.0)
 				.expand_width()
 				.controller(PlaybackController::new().expect("Couldn't create playback controller"))
-				.controller(SearchController::new().expect("Couldn't create plugin controller")),
+				.controller(SearchController)
+				.controller(ImportController),
 		)
 		.with_child(
-			Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
+			Maybe::new(
+				move || track_import::track_import(track_import_db.clone()),
+				|| SizedBox::empty(),
+			)
+			.lens(State::track_import),
 		)
 		.with_child(Overlay::new())
 }

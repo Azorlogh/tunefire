@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+druid = { workspace = true, features = ["im", "raw-win-handle"] }
 anyhow = "1.0.68"
 tracing = "0.1.37"
 tf-plugin = { path = "../../tf-plugin" }
@@ -11,3 +12,4 @@ symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = ["mp3",
 url = "2.3.1"
 ytextract = { git = "https://github.com/Azorlogh/ytextract" }
 tokio = { version="1.20.1", features = ["rt-multi-thread"] }
+futures = "0.3"

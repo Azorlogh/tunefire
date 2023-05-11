@@ -2,18 +2,21 @@ use druid::{
 	keyboard_types::Key,
 	lens,
 	widget::{Container, EnvScope, Label, List, TextBox},
-	Color, Data, Env, Event, Point, Widget, WidgetExt, WidgetPod,
+	Color, Data, Env, Event, Point, Selector, Widget, WidgetExt, WidgetPod,
 };
 
 use super::{
 	common::dropdown::{self, Dropdown},
-	controllers::AutoFocus,
+	controllers::{AutoFocus, OnFocus},
 };
-use crate::{command, data::ctx::Ctx, state::TagSuggestions, theme};
+use crate::{
+	controller::tag_searcher::TAG_SEARCH, data::ctx::Ctx, state::TagSuggestions, theme,
+	widget::common::smart_list::ITEM_DELETE,
+};
 
 const SUGGESTION_BACKGROUND: druid::Key<Color> = druid::Key::new("widget.suggestion.background");
 
-pub type WData = Ctx<TagSuggestions, String>;
+pub type WData = Ctx<TagSuggestions, (u128, String)>;
 
 pub struct TagTextBox {
 	inner: WidgetPod<WData, Box<dyn Widget<WData>>>,
@@ -24,7 +27,18 @@ impl TagTextBox {
 		Self {
 			inner: WidgetPod::new(
 				Dropdown::new(
-					TextBox::new().controller(AutoFocus).lens(Ctx::data()),
+					TextBox::new()
+						.controller(AutoFocus)
+						.lens(lens!((u128, String), 1))
+						.lens(Ctx::data())
+						.controller(OnFocus::lost(
+							|ctx, data: &mut Ctx<_, (u128, String)>, _| {
+								ctx.submit_notification(dropdown::DROPDOWN_HIDE);
+								if data.data.1 == "" {
+									ctx.submit_notification(ITEM_DELETE.with(data.data.0));
+								}
+							},
+						)),
 					|_, _| {
 						List::new(|| {
 							EnvScope::new(
@@ -60,6 +74,8 @@ impl TagTextBox {
 	}
 }
 
+const TRIGGER_SEARCH: Selector = Selector::new("tag-text-box.search");
+
 impl Widget<WData> for TagTextBox {
 	fn event(
 		&mut self,
@@ -70,6 +86,12 @@ impl Widget<WData> for TagTextBox {
 	) {
 		self.inner.event(ctx, event, data, env);
 		match event {
+			Event::Notification(cmd) if cmd.is(ITEM_DELETE) => {
+				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
+			}
+			Event::Command(cmd) if cmd.is(ITEM_DELETE) => {
+				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
+			}
 			Event::KeyDown(event) if event.key == Key::ArrowUp => {
 				data.ctx.selected = data.ctx.selected.saturating_sub(1);
 				ctx.set_handled();
@@ -85,13 +107,16 @@ impl Widget<WData> for TagTextBox {
 			Event::KeyDown(event) if event.key == Key::Enter => {
 				let suggestions = std::mem::take(&mut data.ctx.tags);
 				if let Some(tag) = suggestions.into_iter().nth(data.ctx.selected) {
-					data.data = tag;
+					data.data.1 = tag;
 				}
 				ctx.focus_next();
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
 			Event::KeyDown(event) if event.key == Key::Escape => {
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
+			}
+			Event::Command(cmd) if cmd.is(TRIGGER_SEARCH) => {
+				ctx.submit_notification(TAG_SEARCH.with(data.data.1.clone()));
 			}
 			_ => {}
 		}
@@ -122,7 +147,7 @@ impl Widget<WData> for TagTextBox {
 			if data.ctx.tags.len() != 0 {
 				ctx.submit_command(dropdown::DROPDOWN_SHOW.to(self.inner.id()))
 			}
-			ctx.submit_command(command::TAG_SEARCH.with(data.data.clone()));
+			ctx.submit_command(TRIGGER_SEARCH.to(ctx.widget_id()))
 		}
 	}
 

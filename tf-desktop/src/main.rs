@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
 use druid::{AppLauncher, WindowDesc};
 
+#[macro_use]
+mod util;
+
 mod command;
 mod state;
 mod ui;
@@ -35,7 +38,7 @@ fn main() -> Result<()> {
 
 	let mut db = connect_to_db()?;
 
-	let main_window = WindowDesc::new(ui::ui()).window_size((1000.0, 800.0));
+	let main_window = WindowDesc::new(ui::ui(&db)).window_size((1000.0, 800.0));
 	let state = State::new(&mut db)?;
 	AppLauncher::with_window(main_window)
 		.delegate(delegate::Delegate::new(db)?)
