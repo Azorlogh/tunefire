@@ -1,7 +1,6 @@
-use std::{iter::once, time::Duration};
+use std::time::Duration;
 
 use druid::{
-	im,
 	keyboard_types::Key,
 	lens::{self, Field},
 	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
@@ -74,13 +73,13 @@ impl Widget<WData> for SearchBar {
 			}
 			Event::KeyDown(event) if event.key == Key::Enter => {
 				let suggestions = std::mem::take(&mut data.ctx.tracks);
-				let new_track = if let Some(track) = data
+				if let Some(track) = data
 					.ctx
 					.selected
 					.checked_sub(1)
 					.and_then(|i| suggestions.into_iter().nth(i))
 				{
-					NewTrack {
+					let new_track = NewTrack {
 						source: track.url.to_string(),
 						artists: track
 							.artists
@@ -88,18 +87,13 @@ impl Widget<WData> for SearchBar {
 							.map(|name| (rand::random(), name.to_owned()))
 							.collect(),
 						title: track.title,
-					}
+					};
+					ctx.submit_command(
+						command::UI_TRACK_IMPORT_OPEN.with(TrackImport::Single(new_track)),
+					);
 				} else {
 					ctx.submit_command(IMPORT_REQUEST.with(data.data.to_owned()));
-					NewTrack {
-						source: data.data.to_owned(),
-						artists: im::Vector::from_iter(once((rand::random(), String::new()))),
-						title: String::new(),
-					}
 				};
-				ctx.submit_command(
-					command::UI_TRACK_IMPORT_OPEN.with(TrackImport::Single(new_track)),
-				);
 				ctx.focus_next();
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}

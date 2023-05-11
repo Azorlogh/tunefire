@@ -1729,6 +1729,7 @@ dependencies = [
  "druid",
  "hubdj-core",
  "prost",
+ "tf-db",
  "tokio",
  "tonic",
  "tonic-build",

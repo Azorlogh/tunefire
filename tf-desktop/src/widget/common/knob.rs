@@ -2,7 +2,7 @@ use std::f64::consts::TAU;
 
 use druid::{
 	keyboard_types::Key,
-	kurbo::{BezPath, Circle, Size},
+	kurbo::{BezPath, Size},
 	piet::RenderContext,
 	widget::prelude::*,
 	Affine, Color, Point,
@@ -10,7 +10,6 @@ use druid::{
 use palette::{FromColor, Gradient, IntoColor, Oklch, Srgb};
 
 pub const STEPS: usize = 8;
-use crate::theme;
 
 pub struct Knob {
 	initial_data: f32,

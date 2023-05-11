@@ -77,7 +77,11 @@ impl YoutubeImportPlugin {
 					while let Some(video) = videos.next().await {
 						let video = video?;
 						tracks.push(guesswork(tf_plugin::TrackInfo {
-							url: Arc::new(url.clone()),
+							url: Arc::new(
+								format!("https://www.youtube.com/watch?v={}", video.id())
+									.parse()
+									.unwrap(),
+							),
 							artists: im::Vector::from_iter(once(video.channel().name().to_owned())),
 							title: video.title().to_owned(),
 						}))

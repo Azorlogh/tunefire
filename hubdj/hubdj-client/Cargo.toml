@@ -14,6 +14,7 @@ prost = "0.11"
 clap = { version = "4.2", features = ["derive"] }
 druid = { workspace = true, features = ["im", "raw-win-handle"] }
 hubdj-core = { path = "../hubdj-core" }
+tf-db = { path = "../../tf-db" }
 
 [build-dependencies]
 tonic-build = "0.9"

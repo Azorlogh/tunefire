@@ -60,7 +60,7 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 														tracks: tracks
 															.into_iter()
 															.map(|track| NewTrack {
-																source: url.to_string(),
+																source: track.url.to_string(),
 																title: track.title,
 																artists: track
 																	.artists
