@@ -1,19 +1,17 @@
 use druid::{
 	im,
 	keyboard_types::Key,
+	lens,
 	widget::{Container, Flex, Label, List, Scroll, TextBox, ViewSwitcher},
 	Widget, WidgetExt,
 };
 
 use crate::{
 	command,
-	data::enumerate::{deenumerate, lens_enumerate},
 	state::{NewTrack, NewTrackBulk, TrackImport},
 	widget::{
-		common::focusable_button::FocusableButton,
-		controllers::{
-			AutoFocus, ClickAfter, ClickBlocker, ItemDeleter, OnFocus, OnKey, ITEM_DELETE,
-		},
+		common::{focusable_button::FocusableButton, smart_list::ITEM_DELETE},
+		controllers::{AutoFocus, ClickAfter, ClickBlocker, ItemDeleter, OnFocus, OnKey},
 	},
 };
 
@@ -110,10 +108,10 @@ fn track_artists() -> impl Widget<NewTrack> {
 			List::new(|| {
 				TextBox::new()
 					.with_placeholder("Artist")
-					.lens(deenumerate())
+					.lens(lens!((u128, String), 1))
 					.controller(AutoFocus)
 					.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
-					.controller(OnFocus::lost(|ctx, data: &mut (usize, String), _| {
+					.controller(OnFocus::lost(|ctx, data: &mut (u128, String), _| {
 						if data.1 == "" {
 							ctx.submit_notification(ITEM_DELETE.with(data.0));
 						}
@@ -121,13 +119,12 @@ fn track_artists() -> impl Widget<NewTrack> {
 					.fix_width(128.0)
 			})
 			.horizontal()
-			.lens(lens_enumerate())
-			.controller(ItemDeleter::new()),
+			.controller(ItemDeleter::new(|data: &(u128, String)| data.0)),
 		)
-		.with_child(
-			FocusableButton::new("+").on_click(|_, data: &mut im::Vector<String>, _| {
-				data.push_back(String::new());
-			}),
-		)
+		.with_child(FocusableButton::new("+").on_click(
+			|_, data: &mut im::Vector<(u128, String)>, _| {
+				data.push_back((rand::random(), String::new()));
+			},
+		))
 		.lens(NewTrack::artists)
 }

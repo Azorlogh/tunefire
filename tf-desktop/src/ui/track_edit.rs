@@ -2,20 +2,20 @@ use druid::{
 	im,
 	keyboard_types::Key,
 	lens,
-	widget::{Container, CrossAxisAlignment, Flex, Label, List, TextBox},
+	widget::{Container, CrossAxisAlignment, Flex, Label, TextBox},
 	Data, Widget, WidgetExt,
 };
 
 use crate::{
 	command,
-	data::{
-		ctx::{Ctx, CtxEnumerate},
-		enumerate::{deenumerate, lens_enumerate},
-	},
+	data::ctx::Ctx,
 	state::{TagSuggestions, TrackEdit},
 	widget::{
-		common::focusable_button::FocusableButton,
-		controllers::{ItemDeleter, OnFocus, OnKey, ITEM_DELETE},
+		common::{
+			focusable_button::FocusableButton,
+			smart_list::{IdentifiedVector, SmartList, ITEM_DELETE},
+		},
+		controllers::{ItemDeleter, OnFocus, OnKey},
 		tag_edit::TagEdit,
 	},
 };
@@ -32,26 +32,28 @@ pub fn ui() -> impl Widget<TrackEdit> {
 		.with_child(
 			Flex::row()
 				.with_flex_child(
-					List::new(|| {
-						TextBox::new()
-							.with_placeholder("Artist")
-							.lens(deenumerate())
-							.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
-							.controller(OnFocus::lost(|ctx, data: &mut (usize, String), _| {
-								if data.1 == "" {
-									ctx.submit_notification(ITEM_DELETE.with(data.0));
-								}
-							}))
-							.fix_width(128.0)
-					})
+					SmartList::new(
+						|| {
+							TextBox::new()
+								.with_placeholder("Artist")
+								.lens(lens!((u128, String), 1))
+								.controller(OnKey::new(Key::Enter, |ctx, _, _| ctx.focus_next()))
+								.controller(OnFocus::lost(|ctx, data: &mut (u128, String), _| {
+									if data.1 == "" {
+										ctx.submit_notification(ITEM_DELETE.with(data.0));
+									}
+								}))
+								.fix_width(128.0)
+						},
+						|data| data.0,
+					)
 					.horizontal()
-					.lens(lens_enumerate())
-					.controller(ItemDeleter::new()),
+					.controller(ItemDeleter::new(|d: &(u128, String)| d.0)),
 					1.0,
 				)
 				.with_child(FocusableButton::new("+").on_click(
-					|_, data: &mut im::Vector<String>, _| {
-						data.push_back(String::new());
+					|_, data: &mut im::Vector<(u128, String)>, _| {
+						data.push_back((rand::random(), String::new()));
 					},
 				))
 				.expand_width()
@@ -65,9 +67,11 @@ pub fn ui() -> impl Widget<TrackEdit> {
 		)
 		.with_default_spacer()
 		.with_child(
-			List::new(|| TagEdit::new())
-				.lens(Ctx::enumerate())
-				.controller(ItemDeleter::<Ctx<TagSuggestions, im::Vector<(String, f32)>>>::new())
+			SmartList::new(|| TagEdit::new(), |data| data.data.0)
+				.controller(ItemDeleter::<
+					Ctx<TagSuggestions, IdentifiedVector<(String, f32)>>,
+					(u128, (String, f32)),
+				>::new(|data| data.0))
 				.lens(Ctx::make(
 					lens::Map::new(
 						|s: &TrackEdit| s.tag_suggestions.clone(),
@@ -82,7 +86,7 @@ pub fn ui() -> impl Widget<TrackEdit> {
 		)
 		.with_child(
 			FocusableButton::new("+").on_click(|_, data: &mut TrackEdit, _| {
-				data.tags.push_back(("".to_owned(), 0.5));
+				data.tags.push_back((rand::random(), ("".to_owned(), 0.5)));
 			}),
 		)
 		.with_flex_spacer(1.0)

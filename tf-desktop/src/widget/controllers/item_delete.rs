@@ -1,22 +1,31 @@
 use std::marker::PhantomData;
 
-use druid::{im, widget::Controller, Data, Env, Selector, Widget};
+use druid::{im, widget::Controller, Data, Env, Widget};
 
-use crate::data::ctx::{Ctx, CtxEnumerate};
+use crate::{
+	data::ctx::Ctx,
+	widget::common::smart_list::{ItemId, ITEM_DELETE},
+};
 
-pub const ITEM_DELETE: Selector<usize> = Selector::new("item-delete");
+// pub const ITEM_DELETEE: Selector<usize> = Selector::new("item-delete");
 
 /// Deletes item from list upon receiving ITEM_DELETE
 /// The type parameter is just here for ergonomics to help type interference
-pub struct ItemDeleter<T>(PhantomData<T>);
+pub struct ItemDeleter<T, I> {
+	get_id: Box<dyn Fn(&I) -> ItemId>,
+	pd: PhantomData<T>,
+}
 
-impl<T> ItemDeleter<T> {
-	pub fn new() -> Self {
-		Self(PhantomData)
+impl<T, I> ItemDeleter<T, I> {
+	pub fn new(get_id: impl Fn(&I) -> ItemId + 'static) -> Self {
+		Self {
+			get_id: Box::new(move |data| get_id(data)),
+			pd: PhantomData,
+		}
 	}
 }
 
-impl<T, W> Controller<im::Vector<T>, W> for ItemDeleter<im::Vector<T>>
+impl<T, W> Controller<im::Vector<T>, W> for ItemDeleter<im::Vector<T>, T>
 where
 	T: Data,
 	W: Widget<im::Vector<T>>,
@@ -31,8 +40,12 @@ where
 	) {
 		match event {
 			druid::Event::Notification(cmd) if cmd.is(ITEM_DELETE) => {
-				let idx = cmd.get::<usize>(ITEM_DELETE).unwrap();
-				data.remove(*idx);
+				let id = cmd.get::<u128>(ITEM_DELETE).unwrap();
+				let idx = data
+					.iter()
+					.position(|item| (self.get_id)(item) == *id)
+					.unwrap();
+				data.remove(idx);
 				ctx.set_handled();
 			}
 			_ => {}
@@ -41,7 +54,7 @@ where
 	}
 }
 
-impl<T, W, C> Controller<Ctx<C, im::Vector<T>>, W> for ItemDeleter<Ctx<C, im::Vector<T>>>
+impl<T, W, C> Controller<Ctx<C, im::Vector<T>>, W> for ItemDeleter<Ctx<C, im::Vector<T>>, T>
 where
 	T: Data,
 	C: Data,
@@ -57,8 +70,13 @@ where
 	) {
 		match event {
 			druid::Event::Notification(cmd) if cmd.is(ITEM_DELETE) => {
-				let idx = cmd.get::<usize>(ITEM_DELETE).unwrap();
-				data.data.remove(*idx);
+				let id = cmd.get::<u128>(ITEM_DELETE).unwrap();
+				let idx = data
+					.data
+					.iter()
+					.position(|item| (self.get_id)(item) == *id)
+					.unwrap();
+				data.data.remove(idx);
 				ctx.set_handled();
 			}
 			_ => {}

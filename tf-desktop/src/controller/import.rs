@@ -37,13 +37,21 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 								match res {
 									Ok(item) => match item {
 										ImportedItem::Track(track) => {
-											ctx.submit_command(command::UI_TRACK_IMPORT_OPEN.with(
-												TrackImport::Single(NewTrack {
-													source: url.to_string(),
-													title: track.title,
-													artists: track.artists,
-												}),
-											));
+											ctx.submit_command(
+												command::UI_TRACK_IMPORT_OPEN.with(
+													TrackImport::Single(NewTrack {
+														source: url.to_string(),
+														title: track.title,
+														artists: track
+															.artists
+															.iter()
+															.map(|name| {
+																(rand::random(), name.to_owned())
+															})
+															.collect(),
+													}),
+												),
+											);
 										}
 										ImportedItem::Playlist(tracks) => {
 											ctx.submit_command(
@@ -54,7 +62,16 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 															.map(|track| NewTrack {
 																source: url.to_string(),
 																title: track.title,
-																artists: track.artists,
+																artists: track
+																	.artists
+																	.iter()
+																	.map(|name| {
+																		(
+																			rand::random(),
+																			name.to_owned(),
+																		)
+																	})
+																	.collect(),
 															})
 															.collect(),
 														tag: im::Vector::new(),

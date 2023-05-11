@@ -1,17 +1,9 @@
 use druid::{lens, BoxConstraints, LensExt, Point, Size, Widget, WidgetExt, WidgetPod};
 
-use super::{
-	common::knob::Knob,
-	controllers::{OnFocus, ITEM_DELETE},
-	tag_text_box::TagTextBox,
-};
-use crate::{
-	data::{ctx::Ctx, enumerate::deenumerate},
-	state::TagSuggestions,
-	theme,
-};
+use super::{common::knob::Knob, tag_text_box::TagTextBox};
+use crate::{data::ctx::Ctx, state::TagSuggestions, theme};
 
-type Data = Ctx<TagSuggestions, (usize, (String, f32))>;
+type Data = Ctx<TagSuggestions, (u128, (String, f32))>;
 
 /// This widget is required because I want the Knob's side length to depend on the TextBox's height
 /// AFAICT this isn't possible with simple flex layouts
@@ -25,17 +17,9 @@ impl TagEdit {
 		Self {
 			text_box: WidgetPod::new(
 				TagTextBox::new()
-					.lens(Ctx::map(deenumerate()))
-					.controller(OnFocus::lost(
-						|ctx, data: &mut Ctx<_, (usize, String)>, _| {
-							if data.data.1 == "" {
-								ctx.submit_notification(ITEM_DELETE.with(data.data.0));
-							}
-						},
-					))
 					.lens(Ctx::map((
-						lens!((usize, (String, f32)), 0),
-						lens!((usize, (String, f32)), 1.0),
+						lens!((u128, (String, f32)), 0),
+						lens!((u128, (String, f32)), 1.0),
 					)))
 					.boxed(),
 			),
@@ -44,7 +28,7 @@ impl TagEdit {
 					.env_scope(|env, _| {
 						env.set(druid::theme::FOREGROUND_DARK, env.get(theme::ACCENT))
 					})
-					.lens(Ctx::data().then(lens!((usize, (String, f32)), 1.1)))
+					.lens(Ctx::data().then(lens!((u128, (String, f32)), 1.1)))
 					.boxed(),
 			),
 		}

@@ -1,5 +1,7 @@
 use druid::{im, Data, Lens};
 
+use crate::widget::common::smart_list::IdentifiedVector;
+
 #[derive(Clone, Data)]
 pub enum TrackImport {
 	Single(NewTrack),
@@ -16,14 +18,14 @@ pub struct NewTrackBulk {
 pub struct NewTrack {
 	pub source: String,
 	pub title: String,
-	pub artists: im::Vector<String>,
+	pub artists: IdentifiedVector<String>,
 }
 
 impl NewTrack {
 	pub fn get_track(&self) -> tf_db::Track {
 		tf_db::Track {
 			source: self.source.clone(),
-			artists: self.artists.iter().cloned().collect(),
+			artists: self.artists.iter().map(|(_, name)| name).cloned().collect(),
 			title: self.title.clone(),
 			tags: Default::default(),
 		}

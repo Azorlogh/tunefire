@@ -82,14 +82,18 @@ impl Widget<WData> for SearchBar {
 				{
 					NewTrack {
 						source: track.url.to_string(),
-						artists: track.artists,
+						artists: track
+							.artists
+							.iter()
+							.map(|name| (rand::random(), name.to_owned()))
+							.collect(),
 						title: track.title,
 					}
 				} else {
 					ctx.submit_command(IMPORT_REQUEST.with(data.data.to_owned()));
 					NewTrack {
 						source: data.data.to_owned(),
-						artists: im::Vector::from_iter(once(String::new())),
+						artists: im::Vector::from_iter(once((rand::random(), String::new()))),
 						title: String::new(),
 					}
 				};
