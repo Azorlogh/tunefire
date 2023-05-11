@@ -115,14 +115,6 @@ impl Widget<f32> for Knob {
 			*data as f64
 		};
 
-		if ctx.has_focus() || ctx.is_hot() {
-			ctx.stroke(
-				Circle::new(center, radius),
-				&env.get(theme::FOREGROUND),
-				1.0,
-			);
-		}
-
 		let color = |code: usize| {
 			let color = palette::Srgb::new(
 				(code >> 16) as u8 as f64 / 255.0,
@@ -168,5 +160,17 @@ impl Widget<f32> for Knob {
 		path.close_path();
 		path.apply_affine(Affine::translate(center.to_vec2()));
 		ctx.stroke(path, &env.get(crate::theme::BACKGROUND_HIGHLIGHT1), 1.0);
+
+		if ctx.has_focus() || ctx.is_hot() || ctx.is_active() {
+			let mut path = BezPath::new();
+			path.move_to(Point::new(radius, 0.0));
+			for i in 1..=STEPS {
+				let ang0 = i as f64 / STEPS as f64 * TAU;
+				path.line_to(Point::new(ang0.cos() * radius, ang0.sin() * radius));
+			}
+			path.close_path();
+			path.apply_affine(Affine::translate(center.to_vec2()));
+			ctx.stroke(path, &env.get(crate::theme::FOREGROUND), 1.0);
+		}
 	}
 }

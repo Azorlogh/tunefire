@@ -41,7 +41,6 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 												command::UI_TRACK_IMPORT_OPEN.with(
 													TrackImport::Single(NewTrack {
 														source: url.to_string(),
-														title: track.title,
 														artists: track
 															.artists
 															.iter()
@@ -49,6 +48,8 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 																(rand::random(), name.to_owned())
 															})
 															.collect(),
+														title: track.title,
+														tags: Default::default(),
 													}),
 												),
 											);
@@ -61,7 +62,6 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 															.into_iter()
 															.map(|track| NewTrack {
 																source: url.to_string(),
-																title: track.title,
 																artists: track
 																	.artists
 																	.iter()
@@ -72,6 +72,8 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 																		)
 																	})
 																	.collect(),
+																title: track.title,
+																tags: Default::default(),
 															})
 															.collect(),
 														tags: im::Vector::new(),

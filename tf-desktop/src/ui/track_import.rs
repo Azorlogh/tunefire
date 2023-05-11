@@ -3,7 +3,7 @@ use druid::{
 	keyboard_types::Key,
 	lens,
 	widget::{Container, CrossAxisAlignment, Flex, Label, List, Scroll, TextBox, ViewSwitcher},
-	Data, Widget, WidgetExt,
+	Widget, WidgetExt,
 };
 
 use crate::{
@@ -104,17 +104,7 @@ pub fn add_bulk(db: tf_db::Client) -> impl Widget<NewTrackBulk> {
 					Ctx<TagSuggestions, IdentifiedVector<(String, f32)>>,
 					(u128, (String, f32)),
 				>::new(|data| data.0))
-				.lens(Ctx::make(
-					lens::Map::new(
-						|s: &NewTrackBulk| s.tag_suggestions.clone(),
-						|s, i| {
-							if !i.same(&s.tag_suggestions) {
-								s.tag_suggestions = i;
-							}
-						},
-					),
-					NewTrackBulk::tags,
-				))
+				.lens(Ctx::make(NewTrackBulk::tag_suggestions, NewTrackBulk::tags))
 				.controller(TagSearch::new(&db, NewTrackBulk::tag_suggestions)),
 		)
 		.with_child(
@@ -133,7 +123,8 @@ pub fn add_bulk(db: tf_db::Client) -> impl Widget<NewTrackBulk> {
 		.with_default_spacer()
 		.with_child(
 			FocusableButton::new("Add").on_click(|ctx, data: &mut NewTrackBulk, _| {
-				for track in &data.tracks {
+				for track in data.tracks.iter_mut() {
+					track.tags = data.tags.clone();
 					ctx.submit_command(command::TRACK_ADD.with(track.get_track()));
 				}
 			}),

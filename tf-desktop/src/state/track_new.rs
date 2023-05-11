@@ -21,6 +21,7 @@ pub struct NewTrack {
 	pub source: String,
 	pub title: String,
 	pub artists: IdentifiedVector<String>,
+	pub tags: IdentifiedVector<(String, f32)>,
 }
 
 impl NewTrack {
@@ -29,7 +30,7 @@ impl NewTrack {
 			source: self.source.clone(),
 			artists: self.artists.iter().map(|(_, name)| name).cloned().collect(),
 			title: self.title.clone(),
-			tags: Default::default(),
+			tags: self.tags.iter().map(|(_, tag)| tag).cloned().collect(),
 		}
 	}
 }

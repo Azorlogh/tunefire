@@ -3,7 +3,7 @@ use druid::{
 	keyboard_types::Key,
 	lens,
 	widget::{Container, CrossAxisAlignment, Flex, Label, TextBox},
-	Data, Widget, WidgetExt,
+	Insets, Widget, WidgetExt,
 };
 
 use crate::{
@@ -68,23 +68,16 @@ pub fn ui(db: &tf_db::Client) -> impl Widget<TrackEdit> {
 		)
 		.with_default_spacer()
 		.with_child(
-			SmartList::new(|| TagEdit::new(), |data| data.data.0)
-				.controller(ItemDeleter::<
-					Ctx<TagSuggestions, IdentifiedVector<(String, f32)>>,
-					(u128, (String, f32)),
-				>::new(|data| data.0))
-				.lens(Ctx::make(
-					lens::Map::new(
-						|s: &TrackEdit| s.tag_suggestions.clone(),
-						|s, i| {
-							if !i.same(&s.tag_suggestions) {
-								s.tag_suggestions = i;
-							}
-						},
-					),
-					TrackEdit::tags,
-				))
-				.controller(TagSearch::new(&db, TrackEdit::tag_suggestions)),
+			SmartList::new(
+				|| TagEdit::new().padding(Insets::new(0.0, 0.0, 0.0, 10.0)),
+				|data| data.data.0,
+			)
+			.controller(ItemDeleter::<
+				Ctx<TagSuggestions, IdentifiedVector<(String, f32)>>,
+				(u128, (String, f32)),
+			>::new(|data| data.0))
+			.lens(Ctx::make(TrackEdit::tag_suggestions, TrackEdit::tags))
+			.controller(TagSearch::new(&db, TrackEdit::tag_suggestions)),
 		)
 		.with_child(
 			FocusableButton::new("+").on_click(|_, data: &mut TrackEdit, _| {

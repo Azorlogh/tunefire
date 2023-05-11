@@ -88,6 +88,7 @@ impl Widget<WData> for SearchBar {
 							.map(|name| (rand::random(), name.to_owned()))
 							.collect(),
 						title: track.title,
+						tags: Default::default(),
 					}
 				} else {
 					ctx.submit_command(IMPORT_REQUEST.with(data.data.to_owned()));
@@ -95,6 +96,7 @@ impl Widget<WData> for SearchBar {
 						source: data.data.to_owned(),
 						artists: im::Vector::from_iter(once((rand::random(), String::new()))),
 						title: String::new(),
+						tags: Default::default(),
 					}
 				};
 				ctx.submit_command(
