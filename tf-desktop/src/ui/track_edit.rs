@@ -8,6 +8,7 @@ use druid::{
 
 use crate::{
 	command,
+	controller::tag_searcher::TagSearch,
 	data::ctx::Ctx,
 	state::{TagSuggestions, TrackEdit},
 	widget::{
@@ -20,7 +21,7 @@ use crate::{
 	},
 };
 
-pub fn ui() -> impl Widget<TrackEdit> {
+pub fn ui(db: &tf_db::Client) -> impl Widget<TrackEdit> {
 	let col = Flex::column()
 		.cross_axis_alignment(CrossAxisAlignment::Fill)
 		.with_child(
@@ -82,7 +83,8 @@ pub fn ui() -> impl Widget<TrackEdit> {
 						},
 					),
 					TrackEdit::tags,
-				)),
+				))
+				.controller(TagSearch::new(&db, TrackEdit::tag_suggestions)),
 		)
 		.with_child(
 			FocusableButton::new("+").on_click(|_, data: &mut TrackEdit, _| {

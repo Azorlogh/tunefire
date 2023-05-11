@@ -1,5 +1,6 @@
 use druid::{im, Data, Lens};
 
+use super::TagSuggestions;
 use crate::widget::common::smart_list::IdentifiedVector;
 
 #[derive(Clone, Data)]
@@ -11,7 +12,8 @@ pub enum TrackImport {
 #[derive(Clone, Default, Data, Lens)]
 pub struct NewTrackBulk {
 	pub tracks: im::Vector<NewTrack>,
-	pub tag: im::Vector<(String, f32)>,
+	pub tags: IdentifiedVector<(String, f32)>,
+	pub tag_suggestions: TagSuggestions,
 }
 
 #[derive(Clone, Default, Data, Lens)]

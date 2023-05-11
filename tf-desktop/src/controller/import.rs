@@ -6,7 +6,7 @@ use tracing::warn;
 
 use crate::{
 	command,
-	state::{NewTrack, NewTrackBulk, TrackImport},
+	state::{NewTrack, NewTrackBulk, TagSuggestions, TrackImport},
 	State,
 };
 
@@ -74,7 +74,8 @@ impl<W: Widget<State>> Controller<State, W> for ImportController {
 																	.collect(),
 															})
 															.collect(),
-														tag: im::Vector::new(),
+														tags: im::Vector::new(),
+														tag_suggestions: TagSuggestions::default(),
 													}),
 												),
 											);

@@ -4,6 +4,7 @@ use druid::{im, Data, Lens};
 use tf_db::Track;
 use uuid::Uuid;
 
+use super::TagSuggestions;
 use crate::widget::common::smart_list::IdentifiedVector;
 
 #[derive(Clone, Data, Lens)]
@@ -14,12 +15,6 @@ pub struct TrackEdit {
 	pub source: String,
 	pub tags: im::Vector<(u128, (String, f32))>,
 	pub tag_suggestions: TagSuggestions,
-}
-
-#[derive(Clone, Data, Lens, Debug)]
-pub struct TagSuggestions {
-	pub tags: im::Vector<String>,
-	pub selected: usize,
 }
 
 impl TrackEdit {

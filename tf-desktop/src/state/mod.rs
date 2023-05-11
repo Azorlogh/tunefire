@@ -10,7 +10,7 @@ mod track;
 pub use track::Track;
 
 mod track_edit;
-pub use track_edit::{TagSuggestions, TrackEdit};
+pub use track_edit::TrackEdit;
 
 mod track_new;
 use tf_plugin::{self, Plugin, SearchResult};
@@ -77,5 +77,11 @@ impl State {
 #[derive(Clone, Data, Lens, Debug)]
 pub struct TrackSuggestions {
 	pub tracks: im::Vector<SearchResult>,
+	pub selected: usize,
+}
+
+#[derive(Clone, Data, Lens, Debug, Default)]
+pub struct TagSuggestions {
+	pub tags: im::Vector<String>,
 	pub selected: usize,
 }

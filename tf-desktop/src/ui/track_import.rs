@@ -2,29 +2,39 @@ use druid::{
 	im,
 	keyboard_types::Key,
 	lens,
-	widget::{Container, Flex, Label, List, Scroll, TextBox, ViewSwitcher},
-	Widget, WidgetExt,
+	widget::{Container, CrossAxisAlignment, Flex, Label, List, Scroll, TextBox, ViewSwitcher},
+	Data, Widget, WidgetExt,
 };
 
 use crate::{
 	command,
-	state::{NewTrack, NewTrackBulk, TrackImport},
+	controller::tag_searcher::TagSearch,
+	data::ctx::Ctx,
+	state::{NewTrack, NewTrackBulk, TagSuggestions, TrackImport},
+	theme,
 	widget::{
-		common::{focusable_button::FocusableButton, smart_list::ITEM_DELETE},
+		common::{
+			focusable_button::FocusableButton,
+			separator::Separator,
+			smart_list::{IdentifiedVector, SmartList, ITEM_DELETE},
+		},
 		controllers::{AutoFocus, ClickAfter, ClickBlocker, ItemDeleter, OnFocus, OnKey},
+		tag_edit::TagEdit,
 	},
 };
 
-pub fn track_import() -> impl Widget<TrackImport> {
+pub fn track_import(db: tf_db::Client) -> impl Widget<TrackImport> {
 	Container::new(
 		Container::new(
 			ViewSwitcher::new(
 				|data: &TrackImport, _| std::mem::discriminant(data),
-				|_, data, _| match data {
+				move |_, data, _| match data {
 					TrackImport::Single(_) => {
 						add_track().lens(enum_lens!(TrackImport::Single)).boxed()
 					}
-					TrackImport::Bulk(_) => add_bulk().lens(enum_lens!(TrackImport::Bulk)).boxed(),
+					TrackImport::Bulk(_) => add_bulk(db.clone())
+						.lens(enum_lens!(TrackImport::Bulk))
+						.boxed(),
 				},
 			)
 			.padding(10.0),
@@ -32,7 +42,7 @@ pub fn track_import() -> impl Widget<TrackImport> {
 		.controller(ClickBlocker)
 		.border(crate::theme::FOREGROUND, 1.0)
 		.background(crate::theme::BACKGROUND)
-		.padding(200.0),
+		.padding(100.0),
 	)
 	.controller(ClickAfter::new(|ctx, _, _| {
 		ctx.submit_command(command::UI_TRACK_ADD_CLOSE);
@@ -42,8 +52,23 @@ pub fn track_import() -> impl Widget<TrackImport> {
 	}))
 }
 
-pub fn add_bulk() -> impl Widget<NewTrackBulk> {
+pub fn add_bulk(db: tf_db::Client) -> impl Widget<NewTrackBulk> {
 	Flex::column()
+		.cross_axis_alignment(CrossAxisAlignment::Start)
+		.with_child(
+			Label::new("Playlist import")
+				.with_font(druid::theme::UI_FONT_BOLD)
+				.center(),
+		)
+		.with_default_spacer()
+		.with_child(
+			Separator::new()
+				.with_width(1.0)
+				.with_color(theme::BACKGROUND_HIGHLIGHT1),
+		)
+		.with_default_spacer()
+		.with_child(Label::new("Tracks"))
+		.with_default_spacer()
 		.with_flex_child(
 			Scroll::new(
 				List::new(|| {
@@ -65,7 +90,46 @@ pub fn add_bulk() -> impl Widget<NewTrackBulk> {
 			1.0,
 		)
 		.with_default_spacer()
-		.with_child(Label::new("optional tag"))
+		.with_child(
+			Separator::new()
+				.with_width(1.0)
+				.with_color(theme::BACKGROUND_HIGHLIGHT1),
+		)
+		.with_default_spacer()
+		.with_child(Label::new("Tags"))
+		.with_default_spacer()
+		.with_child(
+			SmartList::new(|| TagEdit::new(), |data| data.data.0)
+				.controller(ItemDeleter::<
+					Ctx<TagSuggestions, IdentifiedVector<(String, f32)>>,
+					(u128, (String, f32)),
+				>::new(|data| data.0))
+				.lens(Ctx::make(
+					lens::Map::new(
+						|s: &NewTrackBulk| s.tag_suggestions.clone(),
+						|s, i| {
+							if !i.same(&s.tag_suggestions) {
+								s.tag_suggestions = i;
+							}
+						},
+					),
+					NewTrackBulk::tags,
+				))
+				.controller(TagSearch::new(&db, NewTrackBulk::tag_suggestions)),
+		)
+		.with_child(
+			FocusableButton::new("+")
+				.on_click(|_, data: &mut NewTrackBulk, _| {
+					data.tags.push_back((rand::random(), ("".to_owned(), 0.5)));
+				})
+				.expand_width(),
+		)
+		.with_default_spacer()
+		.with_child(
+			Separator::new()
+				.with_width(1.0)
+				.with_color(theme::BACKGROUND_HIGHLIGHT1),
+		)
 		.with_default_spacer()
 		.with_child(
 			FocusableButton::new("Add").on_click(|ctx, data: &mut NewTrackBulk, _| {
@@ -79,6 +143,12 @@ pub fn add_bulk() -> impl Widget<NewTrackBulk> {
 pub fn add_track() -> impl Widget<NewTrack> {
 	Flex::column()
 		.with_child(Label::new("Add Track").with_font(druid::theme::UI_FONT_BOLD))
+		.with_default_spacer()
+		.with_child(
+			Separator::new()
+				.with_width(1.0)
+				.with_color(theme::BACKGROUND_HIGHLIGHT1),
+		)
 		.with_default_spacer()
 		.with_child(
 			TextBox::new()

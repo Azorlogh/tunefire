@@ -2,7 +2,7 @@ use druid::{
 	keyboard_types::Key,
 	lens,
 	widget::{Container, EnvScope, Label, List, TextBox},
-	Color, Data, Env, Event, Point, Widget, WidgetExt, WidgetPod,
+	Color, Data, Env, Event, Point, Selector, Widget, WidgetExt, WidgetPod,
 };
 
 use super::{
@@ -10,7 +10,8 @@ use super::{
 	controllers::{AutoFocus, OnFocus},
 };
 use crate::{
-	command, data::ctx::Ctx, state::TagSuggestions, theme, widget::common::smart_list::ITEM_DELETE,
+	controller::tag_searcher::TAG_SEARCH, data::ctx::Ctx, state::TagSuggestions, theme,
+	widget::common::smart_list::ITEM_DELETE,
 };
 
 const SUGGESTION_BACKGROUND: druid::Key<Color> = druid::Key::new("widget.suggestion.background");
@@ -23,7 +24,6 @@ pub struct TagTextBox {
 
 impl TagTextBox {
 	pub fn new() -> Self {
-		// todo!()
 		Self {
 			inner: WidgetPod::new(
 				Dropdown::new(
@@ -74,6 +74,8 @@ impl TagTextBox {
 	}
 }
 
+const TRIGGER_SEARCH: Selector = Selector::new("tag-text-box.search");
+
 impl Widget<WData> for TagTextBox {
 	fn event(
 		&mut self,
@@ -85,7 +87,6 @@ impl Widget<WData> for TagTextBox {
 		self.inner.event(ctx, event, data, env);
 		match event {
 			Event::Notification(cmd) if cmd.is(ITEM_DELETE) => {
-				println!("I JUST LEARNED THAT THE TAG WAS DELETED, AND I SHALL CLOSe");
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
 			}
 			Event::Command(cmd) if cmd.is(ITEM_DELETE) => {
@@ -113,6 +114,9 @@ impl Widget<WData> for TagTextBox {
 			}
 			Event::KeyDown(event) if event.key == Key::Escape => {
 				ctx.submit_command(dropdown::DROPDOWN_HIDE.to(self.inner.id()));
+			}
+			Event::Command(cmd) if cmd.is(TRIGGER_SEARCH) => {
+				ctx.submit_notification(TAG_SEARCH.with(data.data.1.clone()));
 			}
 			_ => {}
 		}
@@ -143,7 +147,7 @@ impl Widget<WData> for TagTextBox {
 			if data.ctx.tags.len() != 0 {
 				ctx.submit_command(dropdown::DROPDOWN_SHOW.to(self.inner.id()))
 			}
-			ctx.submit_command(command::TAG_SEARCH.with(data.data.1.clone()));
+			ctx.submit_command(TRIGGER_SEARCH.to(ctx.widget_id()))
 		}
 	}
 

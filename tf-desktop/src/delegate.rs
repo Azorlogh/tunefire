@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use druid::{im, AppDelegate};
+use druid::AppDelegate;
 use rand::seq::SliceRandom;
 use tracing::error;
 use uuid::Uuid;
@@ -131,15 +131,6 @@ impl AppDelegate<State> for Delegate {
 				let (track, tag, value) = cmd.get_unchecked(command::TRACK_EDIT_TAG);
 				if let Err(e) = self.db.set_tag(*track, tag, *value) {
 					error!("{e}");
-				}
-				druid::Handled::Yes
-			}
-			_ if cmd.is(command::TAG_SEARCH) => {
-				let q = cmd.get_unchecked::<String>(command::TAG_SEARCH);
-				if q != "" {
-					let results = self.db.search_tag(q, 3).unwrap();
-					data.track_edit.as_mut().unwrap().tag_suggestions.tags =
-						im::Vector::from_iter(results.into_iter().map(|(tag, _)| tag));
 				}
 				druid::Handled::Yes
 			}

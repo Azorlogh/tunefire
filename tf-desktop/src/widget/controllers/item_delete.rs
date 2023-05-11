@@ -7,10 +7,7 @@ use crate::{
 	widget::common::smart_list::{ItemId, ITEM_DELETE},
 };
 
-// pub const ITEM_DELETEE: Selector<usize> = Selector::new("item-delete");
-
 /// Deletes item from list upon receiving ITEM_DELETE
-/// The type parameter is just here for ergonomics to help type interference
 pub struct ItemDeleter<T, I> {
 	get_id: Box<dyn Fn(&I) -> ItemId>,
 	pd: PhantomData<T>,
@@ -84,30 +81,3 @@ where
 		child.event(ctx, event, data, env);
 	}
 }
-
-// impl<T, W, C> Controller<CtxEnumerate<C, im::Vector<T>>, W>
-// 	for ItemDeleter<CtxEnumerate<C, im::Vector<T>>>
-// where
-// 	T: Data,
-// 	C: Data,
-// 	W: Widget<CtxEnumerate<C, im::Vector<T>>>,
-// {
-// 	fn event(
-// 		&mut self,
-// 		child: &mut W,
-// 		ctx: &mut druid::EventCtx,
-// 		event: &druid::Event,
-// 		data: &mut CtxEnumerate<C, im::Vector<T>>,
-// 		env: &Env,
-// 	) {
-// 		match event {
-// 			druid::Event::Notification(cmd) if cmd.is(ITEM_DELETE) => {
-// 				let idx = cmd.get::<usize>(ITEM_DELETE).unwrap();
-// 				data.data.remove(*idx);
-// 				ctx.set_handled();
-// 			}
-// 			_ => {}
-// 		}
-// 		child.event(ctx, event, data, env);
-// 	}
-// }

@@ -27,15 +27,19 @@ mod track_edit;
 mod track_import;
 mod track_list;
 
-pub fn ui() -> impl Widget<State> {
+pub fn ui(db: &tf_db::Client) -> impl Widget<State> {
 	let query_box = query_box();
 
+	let track_edit_db = db.clone();
 	let main_view = Flex::row()
 		.with_flex_child(
 			Scroll::new(track_list::ui()).vertical().expand_height(),
 			1.0,
 		)
-		.with_child(Maybe::new(|| track_edit::ui(), || SizedBox::empty()).lens(State::track_edit));
+		.with_child(
+			Maybe::new(move || track_edit::ui(&track_edit_db), || SizedBox::empty())
+				.lens(State::track_edit),
+		);
 
 	let mut root = Flex::column();
 	root.add_default_spacer();
@@ -64,6 +68,7 @@ pub fn ui() -> impl Widget<State> {
 		)),
 	);
 
+	let track_import_db = db.clone();
 	Stack::new()
 		.with_child(
 			root.padding(10.0)
@@ -73,8 +78,11 @@ pub fn ui() -> impl Widget<State> {
 				.controller(ImportController),
 		)
 		.with_child(
-			Maybe::new(|| track_import::track_import(), || SizedBox::empty())
-				.lens(State::track_import),
+			Maybe::new(
+				move || track_import::track_import(track_import_db.clone()),
+				|| SizedBox::empty(),
+			)
+			.lens(State::track_import),
 		)
 		.with_child(Overlay::new())
 }

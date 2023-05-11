@@ -12,7 +12,7 @@ pub use filter::Filter;
 
 mod tags;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
 	pub db: sled::Db,
 	pub tracks: sled::Tree,
