@@ -1,10 +1,12 @@
 use anyhow::{anyhow, Result};
+pub(crate) use client::api;
+use client::Client;
 use percent_encoding::{AsciiSet, CONTROLS};
 use search::SoundcloudSearchPlugin;
-use tf_plugin::{Plugin, SearchPlugin, SourcePlugin};
+use tf_plugin::{ImportPlugin, Plugin, SearchPlugin, SourcePlugin};
 use tracing::debug;
-
-mod api;
+mod client;
+mod import;
 mod search;
 mod source;
 
@@ -43,6 +45,14 @@ impl Plugin for Soundcloud {
 	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>> {
 		Some(Box::new(SoundcloudSearchPlugin {
 			client_id: self.client_id.clone(),
+		}))
+	}
+
+	fn get_import_plugin(&self) -> Option<Box<dyn ImportPlugin>> {
+		Some(Box::new(import::SoundcloudImportPlugin {
+			client: Client {
+				client_id: self.client_id.clone(),
+			},
 		}))
 	}
 

@@ -15,3 +15,4 @@ members = [
 
 [workspace.dependencies]
 druid = { git = "https://github.com/linebender/druid.git", commit = "af94bdd02798c84f7927e898b1ed28ebcec16b30" }
+

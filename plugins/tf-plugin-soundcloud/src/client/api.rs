@@ -26,12 +26,34 @@ pub struct User {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct ResolveResponse {
-	pub track_authorization: String,
-	pub media: Media,
+#[serde(rename_all = "snake_case")]
+#[serde(tag = "kind")]
+pub enum ResolveResponse {
+	Track(ResolvedTrack),
+	Playlist(ResolvedPlaylist),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
+pub struct Track {
+	pub id: u64,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ResolvedTrack {
+	pub id: u64,
+	pub permalink_url: Url,
+	pub track_authorization: String,
+	pub media: Media,
+	pub user: User,
+	pub title: String,
+}
+
+#[derive(Default, Deserialize, Serialize)]
+pub struct ResolvedPlaylist {
+	pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Media {
 	pub transcodings: Vec<Transcoding>,
 }

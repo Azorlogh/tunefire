@@ -10,16 +10,17 @@ By filtering your library with queries, you can create automated playlists to pe
 Tunefire's streaming client is plugin-based, allowing it to connect to multiple streaming services.  
 Here is the current implementation status of each planned streaming service.
 
-| service     | Streaming | Search |
-| ----------- | --------- | ------ |
-| Local files | ✅         | ❌      |
-| Soundcloud  | ✅         | ✅      |
-| Youtube     | ✅        | ❌      |
-| Spotify     | ❌         | ❌      |
+| service     | Streaming | Search | Playlist import |
+| ----------- | --------- | ------ | --------------- |
+| Local files | ✅         | ❌      | ❌               |
+| Soundcloud  | ✅         | ✅      | ✅               |
+| Youtube     | ⚠️        | ❌      | ✅               |
+| Spotify     | ❌         | ❌      | ❌               |
 
 
 ✅ Working  
-🔃 Work in progress  
+⚠️ Working but might randomly break  
+🚧 Work in progress  
 ❌ Unimplemented  
 
 # HubDJ (Draft)

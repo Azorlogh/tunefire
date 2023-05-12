@@ -2,12 +2,14 @@ use std::f64::consts::TAU;
 
 use druid::{
 	keyboard_types::Key,
-	kurbo::{BezPath, Size},
+	kurbo::{BezPath, Circle, Size},
 	piet::RenderContext,
 	widget::prelude::*,
 	Affine, Color, Point,
 };
 use palette::{FromColor, Gradient, IntoColor, Oklch, Srgb};
+
+use crate::theme;
 
 pub const STEPS: usize = 8;
 

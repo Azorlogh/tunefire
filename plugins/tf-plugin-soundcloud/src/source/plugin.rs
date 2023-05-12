@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use tf_plugin::player::{SourcePlugin, TrackInfo, TrackSource};
 use url::Url;
 
@@ -12,18 +12,20 @@ pub struct SoundcloudSourcePlugin {
 
 impl SoundcloudSourcePlugin {
 	pub fn handle(&self, url: &Url) -> Result<TrackSource> {
-		let resolve: api::ResolveResponse = serde_json::from_str(
+		let api::ResolveResponse::Track(resolved) = serde_json::from_str(
 			&ureq::get(&format!(
 				"https://api-v2.soundcloud.com/resolve?client_id={}&url={}",
 				self.client_id, url
 			))
 			.call()?
 			.into_string()?,
-		)?;
+		)? else {
+			return Err(anyhow!("url is not a track"))
+		};
 
 		let media_url = format!(
 			"{}?client_id={}&track_authorization={}",
-			resolve.media.transcodings[0].url, self.client_id, resolve.track_authorization
+			resolved.media.transcodings[0].url, self.client_id, resolved.track_authorization
 		);
 
 		let media_response: api::MediaResponse =
