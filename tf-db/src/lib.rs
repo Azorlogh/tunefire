@@ -5,7 +5,7 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use uuid::Uuid;
 
 mod data;
-pub use data::Track;
+pub use data::{Playlist, Track};
 
 mod filter;
 pub use filter::Filter;
@@ -17,6 +17,7 @@ pub struct Client {
 	pub db: sled::Db,
 	pub tracks: sled::Tree,
 	pub tags: sled::Tree,
+	pub playlists: sled::Tree,
 }
 
 impl Client {
@@ -27,8 +28,14 @@ impl Client {
 		let db = sled::open(path)?;
 		let tracks = db.open_tree(b"tracks")?;
 		let tags = db.open_tree(b"tags")?;
+		let playlists = db.open_tree(b"playlists")?;
 
-		Ok(Client { db, tracks, tags })
+		Ok(Client {
+			db,
+			tracks,
+			tags,
+			playlists,
+		})
 	}
 
 	pub fn add_track(&mut self, track: &Track) -> Result<Uuid> {
@@ -104,5 +111,42 @@ impl Client {
 			.take(limit)
 			.map(|((_, indices), tag)| (tag, indices))
 			.collect())
+	}
+
+	pub fn add_playlist(&mut self, playlist: &Playlist) -> Result<Uuid> {
+		let id = Uuid::new_v4();
+		let playlist = serde_json::to_vec(playlist)?;
+		self.playlists.insert(id, playlist)?;
+		Ok(id)
+	}
+
+	pub fn set_playlist(&mut self, id: Uuid, playlist: &Playlist) -> Result<Uuid> {
+		let playlist = serde_json::to_vec(&playlist)?;
+		self.playlists.insert(id, playlist)?;
+		Ok(id)
+	}
+
+	pub fn delete_playlist(&mut self, id: Uuid) -> Result<()> {
+		self.playlists.remove(id)?;
+		Ok(())
+	}
+
+	pub fn get_playlist(&self, id: Uuid) -> Result<Playlist> {
+		Ok(serde_json::from_slice(
+			self.playlists
+				.get(id)?
+				.ok_or(anyhow!("playlist `{id}` does not exist"))?
+				.as_ref(),
+		)?)
+	}
+
+	pub fn iter_playlist(&mut self) -> impl Iterator<Item = Result<(Uuid, Playlist)>> {
+		self.playlists.iter().map(|kv| {
+			let (id, playlist) = kv?;
+			Ok((
+				Uuid::from_bytes(id.as_ref().try_into()?),
+				serde_json::from_slice(playlist.as_ref())?,
+			))
+		})
 	}
 }

@@ -16,3 +16,9 @@ pub struct Tag {
 	pub id: Uuid,
 	pub name: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Playlist {
+	pub name: String,
+	pub tracks: Vec<Uuid>,
+}

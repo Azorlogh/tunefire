@@ -4,6 +4,7 @@ use crate::State;
 
 pub const ACCENT: Key<Color> = Key::new("theme.accent");
 pub const ACCENT_DIM: Key<Color> = Key::new("theme.accent-dim");
+pub const BACKGROUND_DIM: Key<Color> = Key::new("theme.background-dim");
 pub const BACKGROUND: Key<Color> = Key::new("theme.background");
 pub const BACKGROUND_HIGHLIGHT0: Key<Color> = Key::new("theme.background-highlight-0");
 pub const BACKGROUND_HIGHLIGHT1: Key<Color> = Key::new("theme.background-highlight-1");
@@ -21,6 +22,7 @@ mod colors {
 
 	pub const ACCENT: Color = color(0x98c379);
 	pub const ACCENT_DIM: Color = color(0x8bb16e);
+	pub const BACKGROUND_DIM: Color = color(0x21252b);
 	pub const BACKGROUND: Color = color(0x282C34);
 	pub const BACKGROUND_HIGHLIGHT0: Color = color(0x2c313a);
 	pub const BACKGROUND_HIGHLIGHT1: Color = color(0x3a404c);
@@ -31,6 +33,7 @@ mod colors {
 pub fn apply(env: &mut Env, _data: &State) {
 	env.set(ACCENT, colors::ACCENT);
 	env.set(ACCENT_DIM, colors::ACCENT_DIM);
+	env.set(BACKGROUND_DIM, colors::BACKGROUND_DIM);
 	env.set(BACKGROUND, colors::BACKGROUND);
 	env.set(BACKGROUND_HIGHLIGHT0, colors::BACKGROUND_HIGHLIGHT0);
 	env.set(BACKGROUND_HIGHLIGHT1, colors::BACKGROUND_HIGHLIGHT1);

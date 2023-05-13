@@ -1,10 +1,14 @@
 use std::rc::Rc;
 
 use druid::{
+	im,
 	keyboard_types::Key,
 	kurbo::{BezPath, Circle},
 	lens::Map,
-	widget::{ControllerHost, Flex, Label, Maybe, Painter, Scroll, SizedBox, TextBox},
+	widget::{
+		Axis, Container, ControllerHost, CrossAxisAlignment, Flex, Label, List, MainAxisAlignment,
+		Maybe, Painter, Scroll, SizedBox, TextBox,
+	},
 	Affine, Env, EventCtx, PaintCtx, RenderContext, TextAlignment, Vec2, Widget, WidgetExt,
 };
 use tf_player::player;
@@ -14,8 +18,14 @@ use crate::{
 	command,
 	controller::{playback::PlaybackController, search::SearchController},
 	data::ctx::Ctx,
+	state::Playlist,
 	theme,
-	widget::{common::stack::Stack, controllers::OnKey, overlay::Overlay, search_bar::SearchBar},
+	widget::{
+		common::{focusable_button::FocusableButton, separator::Separator, stack::Stack},
+		controllers::OnKey,
+		overlay::Overlay,
+		search_bar::SearchBar,
+	},
 	State,
 };
 
@@ -28,22 +38,21 @@ mod track_list;
 pub fn ui() -> impl Widget<State> {
 	let query_box = query_box();
 
-	let main_view = Flex::row()
+	let tracks = Flex::row()
 		.with_flex_child(
 			Scroll::new(track_list::ui()).vertical().expand_height(),
 			1.0,
 		)
 		.with_child(Maybe::new(|| track_edit::ui(), || SizedBox::empty()).lens(State::track_edit));
 
-	let mut root = Flex::column();
-	root.add_default_spacer();
-	root.add_child(query_box);
-	root.add_default_spacer();
-	root.add_flex_child(main_view, 1.0);
-	root.add_default_spacer();
-	root.add_child(search_bar());
-	root.add_default_spacer();
-	root.add_child(
+	let mut main = Flex::column();
+	main.add_default_spacer();
+	main.add_child(query_box);
+	main.add_default_spacer();
+	main.add_flex_child(tracks, 1.0);
+	main.add_default_spacer();
+	main.add_child(search_bar());
+	main.add_child(
 		Maybe::new(|| media_bar::ui(), || SizedBox::empty()).lens(Map::new(
 			|s: &State| {
 				s.player_state.get_playing().map(|p| MediaBarState {
@@ -62,17 +71,55 @@ pub fn ui() -> impl Widget<State> {
 		)),
 	);
 
+	let root = Flex::row()
+		.with_child(playlists().lens(State::playlists))
+		.with_default_spacer()
+		.with_flex_child(main.padding(10.0), 1.0);
+
 	Stack::new()
 		.with_child(
-			root.padding(10.0)
-				.expand_width()
-				.controller(PlaybackController::new().expect("Couldn't create playback controller"))
-				.controller(SearchController::new().expect("Couldn't create plugin controller")),
+			root.controller(
+				PlaybackController::new().expect("Couldn't create playback controller"),
+			)
+			.controller(SearchController::new().expect("Couldn't create plugin controller")),
 		)
 		.with_child(
 			Maybe::new(|| add_track::add_track(), || SizedBox::empty()).lens(State::new_track),
 		)
 		.with_child(Overlay::new())
+	// .debug_paint_layout()
+}
+
+fn playlists() -> impl Widget<im::Vector<Playlist>> {
+	Container::new(
+		Flex::column()
+			.with_child(Label::new("Playlists").padding(16.0))
+			.with_child(
+				Separator::new()
+					.with_axis(Axis::Vertical)
+					.with_width(1.0)
+					.with_color(theme::BACKGROUND_HIGHLIGHT1)
+					.fix_height(0.0)
+					.expand_width(),
+			)
+			.with_flex_child(
+				List::new(|| {
+					Label::new(|data: &Playlist, _: &_| data.name.to_owned()).padding(16.0)
+				}),
+				1.0,
+			)
+			.with_child(FocusableButton::new("+").on_click(|ctx, _, _| {
+				ctx.submit_command(command::PLAYLIST_ADD.with(tf_db::Playlist {
+					name: String::from("New playlist"),
+					tracks: vec![],
+				}))
+			}))
+			.main_axis_alignment(MainAxisAlignment::Start)
+			.cross_axis_alignment(CrossAxisAlignment::Fill)
+			.fix_width(256.0),
+	)
+	.padding(10.0)
+	.background(theme::BACKGROUND_DIM)
 }
 
 fn query_box() -> impl Widget<State> {

@@ -143,6 +143,17 @@ impl AppDelegate<State> for Delegate {
 				}
 				druid::Handled::Yes
 			}
+			_ if cmd.is(command::PLAYLIST_ADD) => {
+				let playlist = cmd.get_unchecked::<tf_db::Playlist>(command::PLAYLIST_ADD);
+				match self.db.add_playlist(playlist) {
+					Ok(id) => {
+						let playlist = self.db.get_playlist(id).unwrap();
+						data.playlists.push_back((id, playlist).into());
+					}
+					Err(e) => error!("{:?}", e),
+				}
+				druid::Handled::Yes
+			}
 			_ => druid::Handled::No,
 		}
 	}

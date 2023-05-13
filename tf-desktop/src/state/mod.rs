@@ -8,6 +8,8 @@ use uuid::Uuid;
 
 mod track;
 pub use track::Track;
+mod playlist;
+pub use playlist::Playlist;
 
 mod track_edit;
 pub use track_edit::{TagSuggestions, TrackEdit};
@@ -20,6 +22,7 @@ pub use track_new::NewTrack;
 pub struct State {
 	pub plugins: im::Vector<Arc<RwLock<Box<dyn Plugin>>>>,
 	pub tracks: im::Vector<Track>,
+	pub playlists: im::Vector<Playlist>,
 	pub shown_tags: im::Vector<String>,
 	#[data(same_fn = "PartialEq::eq")]
 	pub player_state: Rc<player::State>,
@@ -44,6 +47,11 @@ impl State {
 			.map(Into::into)
 			.collect();
 
+		let playlists: im::Vector<_> = db
+			.iter_playlist()
+			.map(|p| p.map(|p| p.into()))
+			.collect::<Result<_, _>>()?;
+
 		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
 		#[cfg(feature = "local")]
 		plugins.push(Box::new(tf_plugin_local::Local));
@@ -55,6 +63,7 @@ impl State {
 		Ok(Self {
 			plugins: im::Vector::from_iter(plugins.into_iter().map(|p| Arc::new(RwLock::new(p)))),
 			tracks,
+			playlists,
 			shown_tags: im::Vector::new(),
 			player_state: Rc::new(player::State::default()),
 			queue: im::Vector::new(),
