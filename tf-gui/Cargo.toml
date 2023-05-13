@@ -1,16 +1,13 @@
 [package]
 name = "tf-gui"
 version = "0.1.0"
-authors = ["Alix Bott <bott.alix@gmail.com>"]
 edition = "2021"
+authors = ["Alix Bott <bott.alix@gmail.com>"]
+description = "Collection of useful gui primitives & logic"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0"
-tokio = { version = "1.28", features = ["full"] }
-tonic = "0.9"
-prost = "0.11"
-clap = { version = "4.2", features = ["derive"] }
 druid = { workspace = true, features = ["im", "raw-win-handle"] }
-directories = { workspace = true }
 tracing = { workspace = true }
 palette = { workspace = true }

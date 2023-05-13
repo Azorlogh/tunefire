@@ -2,6 +2,8 @@
 name = "tf-plugin-youtube"
 version = "0.1.0"
 edition = "2021"
+authors = ["Alix Bott <bott.alix@gmail.com>"]
+license = "MIT"
 
 [dependencies]
 druid = { workspace = true, features = ["im", "raw-win-handle"] }

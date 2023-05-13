@@ -1,12 +1,10 @@
 [package]
 name = "tf-player"
 version = "0.1.0"
-authors = ["Alix Bott <bott.alix@gmail.com>"]
 edition = "2021"
-
-description = "A modular music player"
-license = "GPL-3.0"
-
+authors = ["Alix Bott <bott.alix@gmail.com>"]
+description = "Audio player that plays urls"
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.57"

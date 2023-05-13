@@ -2,6 +2,8 @@
 name = "tf-plugin-soundcloud"
 version = "0.1.0"
 edition = "2021"
+authors = ["Alix Bott <bott.alix@gmail.com>"]
+license = "MIT"
 
 [dependencies]
 anyhow = "1.0.68"

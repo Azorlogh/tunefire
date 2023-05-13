@@ -1,11 +1,10 @@
 [package]
 name = "tf-desktop"
 version = "0.1.0"
-authors = ["Alix Bott <bott.alix@gmail.com>"]
 edition = "2021"
-
+authors = ["Alix Bott <bott.alix@gmail.com>"]
 description = "A modular music player"
-license = "GPL-3.0"
+license = "MIT"
 
 [features]
 default = ["local", "soundcloud", "youtube"]
