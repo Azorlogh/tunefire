@@ -3799,6 +3799,7 @@ dependencies = [
  "rand",
  "souvlaki",
  "tf-db",
+ "tf-gui",
  "tf-player",
  "tf-plugin",
  "tf-plugin-local",

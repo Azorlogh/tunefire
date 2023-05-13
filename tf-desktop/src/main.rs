@@ -8,13 +8,12 @@ mod command;
 mod state;
 mod ui;
 pub use state::State;
+use tf_gui::data;
 use tracing_subscriber::EnvFilter;
 
 pub mod widget;
 
 pub mod theme;
-
-pub mod data;
 
 mod delegate;
 

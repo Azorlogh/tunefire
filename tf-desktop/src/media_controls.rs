@@ -38,7 +38,7 @@ impl MediaControls {
 			.map_err(|e| anyhow!("failed attach media control handler: {:?}", e))?;
 
 		Ok(Self {
-			controls: controls,
+			controls,
 			events: from_media_events,
 		})
 	}

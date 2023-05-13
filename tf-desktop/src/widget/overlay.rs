@@ -20,15 +20,14 @@ pub struct Child {
 	widget: WidgetPod<State, Box<dyn Widget<State>>>,
 }
 
+#[derive(Default)]
 pub enum Overlay {
+	#[default]
 	Inactive,
-	Active { child: Child, background: Color },
-}
-
-impl Overlay {
-	pub fn new() -> Overlay {
-		Overlay::Inactive
-	}
+	Active {
+		child: Child,
+		background: Color,
+	},
 }
 
 impl Widget<State> for Overlay {

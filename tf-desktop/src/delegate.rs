@@ -66,8 +66,7 @@ impl AppDelegate<State> for Delegate {
 							ctx.submit_command(playback::PLAYER_CLEAR);
 							data.queue = tracks.iter().cloned().map(Into::into).collect();
 							ctx.submit_command(
-								playback::PLAYER_ENQUEUE
-									.with((data.queue.pop_front().unwrap()).clone()),
+								playback::PLAYER_ENQUEUE.with(data.queue.pop_front().unwrap()),
 							);
 						}
 						Err(e) => println!("error while querying {:?}", e),

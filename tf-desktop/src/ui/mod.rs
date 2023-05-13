@@ -84,7 +84,7 @@ pub fn ui(db: &tf_db::Client) -> impl Widget<State> {
 			)
 			.lens(State::track_import),
 		)
-		.with_child(Overlay::new())
+		.with_child(Overlay::default())
 }
 
 fn query_box() -> impl Widget<State> {

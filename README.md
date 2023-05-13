@@ -1,8 +1,10 @@
 # Tunefire
 
+⚠️ Disclaimer: This project is a work in progress and not useful yet.
+
 Tunefire is a modular tag-based music streaming app that connects to multiple streaming services.
 
-It makes it easy to manage your music by allowing you to tag songs with custom attributes such as speed, cheerfulness, loudness, or any other feature you choose.  
+It aims to make it easy to manage your music by letting you tag songs with custom abstract attributes such as speed, cheerfulness, loudness, or any other feature you choose.  
 By filtering your library with queries, you can create automated playlists to perfecly match your mood.
 
 ### Multi-source
@@ -31,6 +33,11 @@ This repo also contains HubDJ, an app that lets you host listening sessions with
 
 Compiled binaries for Linux, MacOS and Windows under the [releases section](https://github.com/Azorlogh/tunefire/releases/).
 
-## Author's note
+# Author's note
 
-I am working on this project solely in my free time, therefore you can expect Tunefire's development progress to be quite sporadic. The primary goal is to create an app that I can use for my daily listening sessions, but it has yet to reach that point.
+I am working on this project solely in my free time, therefore you can expect Tunefire's development progress to be quite sporadic.  
+The primary goal is to create an app that I can use for my daily listening sessions, but it has yet to reach that point.  
+
+### Acknowledgement
+Thanks to Jan Pochyla for [his excellent spotify client Psst](https://github.com/jpochyla/psst) which served as a high-quality example of a real-world app made using druid.  
+Thanks to all the library authors & contributors for making it possible for anybody to create apps of this scale in a reasonable time.

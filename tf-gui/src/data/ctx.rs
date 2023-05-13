@@ -1,8 +1,14 @@
+// MIT License
+// Copyright (c) 2020 Jan Pochyla
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// Modified by Alix Bott
+
 use std::fmt;
 
 use druid::{lens::Field, widget::ListIter, Data, Lens, LensExt};
-
-// use crate::data::Promise;
 
 #[derive(Clone, Data)]
 pub struct Ctx<C, T> {
@@ -166,48 +172,6 @@ where
 		})
 	}
 }
-
-// impl<C, PT, PD, PE> Ctx<C, Promise<PT, PD, PE>>
-// where
-// 	C: Data,
-// 	PT: Data,
-// 	PD: Data,
-// 	PE: Data,
-// {
-// 	pub fn in_promise() -> impl Lens<Self, Promise<Ctx<C, PT>, PD, PE>> {
-// 		Map::new(
-// 			|c: &Self| match &c.data {
-// 				Promise::Empty => Promise::Empty,
-// 				Promise::Deferred { def } => Promise::Deferred {
-// 					def: def.to_owned(),
-// 				},
-// 				Promise::Resolved { def, val } => Promise::Resolved {
-// 					def: def.to_owned(),
-// 					val: Ctx::new(c.ctx.to_owned(), val.to_owned()),
-// 				},
-// 				Promise::Rejected { def, err } => Promise::Rejected {
-// 					def: def.to_owned(),
-// 					err: err.to_owned(),
-// 				},
-// 			},
-// 			|c: &mut Self, p: Promise<Ctx<C, PT>, PD, PE>| match p {
-// 				Promise::Empty => {
-// 					c.data = Promise::Empty;
-// 				}
-// 				Promise::Deferred { def } => {
-// 					c.data = Promise::Deferred { def };
-// 				}
-// 				Promise::Resolved { def, val } => {
-// 					c.data = Promise::Resolved { def, val: val.data };
-// 					c.ctx = val.ctx;
-// 				}
-// 				Promise::Rejected { def, err } => {
-// 					c.data = Promise::Rejected { def, err };
-// 				}
-// 			},
-// 		)
-// 	}
-// }
 
 impl<C, T, L> ListIter<Ctx<C, T>> for Ctx<C, L>
 where

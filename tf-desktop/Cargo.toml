@@ -16,6 +16,7 @@ youtube = ["tf-plugin-youtube"]
 [dependencies]
 tf-db = { path = "../tf-db" }
 tf-player = { path = "../tf-player" }
+tf-gui = { path = "../tf-gui" }
 druid = { workspace = true, features = ["im", "raw-win-handle"] }
 anyhow = "1.0.57"
 parking_lot = "0.12.1"
