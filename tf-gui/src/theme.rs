@@ -1,7 +1,5 @@
 use druid::{Color, Env, Key};
 
-use crate::State;
-
 pub const ACCENT: Key<Color> = Key::new("theme.accent");
 pub const ACCENT_DIM: Key<Color> = Key::new("theme.accent-dim");
 pub const BACKGROUND: Key<Color> = Key::new("theme.background");
@@ -9,6 +7,10 @@ pub const BACKGROUND_HIGHLIGHT0: Key<Color> = Key::new("theme.background-highlig
 pub const BACKGROUND_HIGHLIGHT1: Key<Color> = Key::new("theme.background-highlight-1");
 pub const FOREGROUND: Key<Color> = Key::new("theme.foreground");
 pub const FOREGROUND_DIM: Key<Color> = Key::new("theme.foreground-dim");
+
+pub const THEME_RED: Key<Color> = Key::new("theme.red");
+pub const THEME_GREEN: Key<Color> = Key::new("theme.green");
+pub const THEME_BLUE: Key<Color> = Key::new("theme.blue");
 
 const fn color(code: usize) -> Color {
 	Color::rgb8((code >> 16) as u8, (code >> 8) as u8, code as u8)
@@ -26,9 +28,12 @@ mod colors {
 	pub const BACKGROUND_HIGHLIGHT1: Color = color(0x3a404c);
 	pub const FOREGROUND: Color = color(0xffffff);
 	pub const FOREGROUND_DIM: Color = color(0xaaaaaa);
+	pub const GREEN: Color = color(0x98C379);
+	pub const RED: Color = color(0xE06C75);
+	pub const BLUE: Color = color(0x61AFEF);
 }
 
-pub fn apply(env: &mut Env, _data: &State) {
+pub fn apply(env: &mut Env) {
 	env.set(ACCENT, colors::ACCENT);
 	env.set(ACCENT_DIM, colors::ACCENT_DIM);
 	env.set(BACKGROUND, colors::BACKGROUND);
@@ -56,5 +61,9 @@ pub fn apply(env: &mut Env, _data: &State) {
 		env.set(WIDGET_PADDING_HORIZONTAL, 10.0);
 		env.set(WIDGET_PADDING_VERTICAL, 10.0);
 		env.set(TEXTBOX_INSETS, 8.0);
+
+		env.set(THEME_RED, colors::RED);
+		env.set(THEME_GREEN, colors::GREEN);
+		env.set(THEME_BLUE, colors::BLUE);
 	}
 }

@@ -1726,13 +1726,17 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "directories",
  "druid",
  "hubdj-core",
+ "palette",
  "prost",
  "tf-db",
+ "tf-gui",
  "tokio",
  "tonic",
  "tonic-build",
+ "tracing",
 ]
 
 [[package]]
@@ -1743,9 +1747,13 @@ version = "0.1.0"
 name = "hubdj-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "hubdj-core",
  "prost",
  "rand",
+ "tf-plugin",
+ "tf-plugin-soundcloud",
+ "tf-plugin-youtube",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -3800,6 +3808,21 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "tf-gui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "directories",
+ "druid",
+ "palette",
+ "prost",
+ "tokio",
+ "tonic",
+ "tracing",
 ]
 
 [[package]]

@@ -9,7 +9,7 @@ use tonic::{transport::Channel, Response};
 
 use crate::{
 	pb::{self, hubdj_client::HubdjClient, AuthRequest, AuthResponse},
-	State, StateConnected, StateDisconnected, User, UserState,
+	state::{State, StateConnected, StateDisconnected, Tracklist, User, UserState},
 };
 
 pub const CLIENT_CONNECT_REQ: Selector = Selector::new("client.connect.req");
@@ -95,7 +95,12 @@ impl<W: Widget<State>> Controller<State, W> for ClientController {
 								.into_iter()
 								.map(|id| (UserId(id), UserState::Loading)),
 						),
+						in_queue: false,
 						booth: None,
+						tracklist: Tracklist {
+							query: String::new(),
+							tracks: im::Vector::new(),
+						},
 					});
 					Handled::Yes
 				}

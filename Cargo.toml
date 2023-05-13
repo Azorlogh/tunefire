@@ -5,6 +5,7 @@ members = [
 	"tf-player",
 	"tf-desktop",
 	"tf-plugin",
+	"tf-gui",
 	"plugins/tf-plugin-local",
 	"plugins/tf-plugin-soundcloud",
 	"plugins/tf-plugin-youtube",
@@ -15,4 +16,6 @@ members = [
 
 [workspace.dependencies]
 druid = { git = "https://github.com/linebender/druid.git", commit = "af94bdd02798c84f7927e898b1ed28ebcec16b30" }
-
+directories = "4.0.1"
+tracing = "0.1.36"
+palette = "0.6.1"

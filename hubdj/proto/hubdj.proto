@@ -8,7 +8,7 @@ service Hubdj {
   rpc Auth(AuthRequest) returns (AuthResponse) {}
   rpc GetUser(UserId) returns (User) {}
   rpc StreamBoothState(google.protobuf.Empty) returns (stream Booth) {}
-  rpc SubmitPlaylist(Playlist) returns (Status) {}
+  rpc SubmitPlaylist(SubmitPlaylistRequest) returns (Status) {}
 }
 
 message Booth {
@@ -39,6 +39,10 @@ message AuthResponse {
 
 message Status { bool ok = 1; }
 
+message SubmitPlaylistRequest {
+  uint64 token = 1;
+  Playlist playlist = 2;
+}
 message Playlist { repeated Track tracks = 1; }
 
 message Track { string url = 1; }

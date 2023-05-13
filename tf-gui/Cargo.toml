@@ -1,8 +1,8 @@
 [package]
-name = "hubdj-client"
+name = "tf-gui"
 version = "0.1.0"
+authors = ["Alix Bott <bott.alix@gmail.com>"]
 edition = "2021"
-build = "../build.rs"
 
 [dependencies]
 anyhow = "1.0"
@@ -11,12 +11,6 @@ tonic = "0.9"
 prost = "0.11"
 clap = { version = "4.2", features = ["derive"] }
 druid = { workspace = true, features = ["im", "raw-win-handle"] }
-hubdj-core = { path = "../hubdj-core" }
-tf-db = { path = "../../tf-db" }
-tf-gui = { path = "../../tf-gui" }
 directories = { workspace = true }
 tracing = { workspace = true }
 palette = { workspace = true }
-
-[build-dependencies]
-tonic-build = "0.9"

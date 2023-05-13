@@ -14,7 +14,11 @@ prost = "0.11"
 url = "2.3"
 rand = "0.8"
 hubdj-core = { path = "../hubdj-core" }
+anyhow = "1.0"
 
+tf-plugin = { path = "../../tf-plugin" }
+tf-plugin-soundcloud = { path = "../../plugins/tf-plugin-soundcloud" }
+tf-plugin-youtube = { path = "../../plugins/tf-plugin-youtube" }
 
 [build-dependencies]
 tonic-build = "0.9"
