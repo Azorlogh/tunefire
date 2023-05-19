@@ -1,7 +1,11 @@
-use std::rc::Rc;
+use std::{
+	rc::Rc,
+	sync::{Arc, RwLock},
+};
 
 use druid::{im, ArcStr, Data, Lens};
 use hubdj_core::{UserId, UserToken};
+use tf_plugin::Plugin;
 
 #[derive(Clone, Data)]
 pub enum State {
@@ -24,10 +28,12 @@ pub struct StateDisconnected {
 
 #[derive(Clone, Data, Lens)]
 pub struct StateConnected {
+	pub plugins: im::Vector<Arc<RwLock<Box<dyn Plugin>>>>,
 	pub id: Rc<UserId>,
 	pub token: Rc<UserToken>,
 	pub name: String,
 	pub booth: Option<Booth>,
+	pub queue: im::Vector<ArcStr>,
 	pub users: im::OrdMap<Rc<UserId>, UserState>,
 	pub in_queue: bool,
 	pub tracklist: Tracklist,
@@ -42,15 +48,15 @@ pub struct Tracklist {
 #[derive(Clone, Data, Lens)]
 pub struct Booth {
 	pub dj: Rc<UserId>,
-	pub song: Song,
+	pub track: ArcStr,
 }
 
-#[derive(Clone, Data, Lens)]
-pub struct Song {
-	pub url: String,
-	pub artist: String,
-	pub title: String,
-}
+// #[derive(Clone, Data, Lens)]
+// pub struct Song {
+// 	pub url: String,
+// 	pub artist: String,
+// 	pub title: String,
+// }
 
 #[derive(Clone, Data)]
 pub enum UserState {

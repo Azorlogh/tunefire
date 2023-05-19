@@ -12,6 +12,7 @@ use parking_lot::RwLock;
 use super::Command;
 use crate::TrackSource;
 
+#[derive(Clone)]
 pub struct Controller {
 	sender: crossbeam_channel::Sender<Command>,
 	state: Arc<RwLock<super::State>>,

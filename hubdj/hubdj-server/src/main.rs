@@ -3,12 +3,13 @@ mod probe;
 use std::{
 	collections::{HashMap, VecDeque},
 	pin::Pin,
-	sync::{Arc, RwLock},
+	sync::Arc,
 	time::{Duration, Instant},
 };
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use hubdj_core::{UserId, UserToken};
+use parking_lot::RwLock;
 use tf_plugin::{Plugin, SourcePlugin};
 use tokio::{sync::mpsc, task, time};
 use tokio_stream::wrappers::ReceiverStream;
@@ -18,31 +19,40 @@ pub mod pb {
 	tonic::include_proto!("hubdj");
 }
 
-use pb::{hubdj_server::HubdjServer, AuthRequest, AuthResponse, SubmitPlaylistRequest};
+use pb::{
+	hubdj_server::HubdjServer, AuthRequest, AuthResponse, JoinQueueRequest, LeaveQueueRequest,
+	QueuedTrack, SubmitPlaylistRequest,
+};
 use url::Url;
 
 type HResult<T> = Result<Response<T>, Status>;
 
+#[derive(Debug)]
 pub struct User {
 	id: UserId,
 	token: UserToken,
 	name: String,
-	queue: Option<VecDeque<pb::Track>>,
+	queue: VecDeque<pb::Track>,
 }
 
-pub struct Booth {
-	dj: UserId,
+#[derive(Debug)]
+pub struct CurrentDj {
+	user: UserId,
 	track: pb::Track,
 	started_at: Instant,
-	// queue: Vec<pb::Track>,
-	user_queue: VecDeque<UserId>,
 	duration: Duration,
+}
+
+#[derive(Debug, Default)]
+pub struct Booth {
+	current_dj: Option<CurrentDj>,
+	user_queue: VecDeque<UserId>,
 }
 
 #[derive(Clone)]
 pub struct MyServer {
 	users: Arc<RwLock<HashMap<UserId, User>>>,
-	booth: Arc<RwLock<Option<Booth>>>,
+	booth: Arc<RwLock<Booth>>,
 	booth_listeners: Arc<RwLock<Vec<tokio::sync::mpsc::Sender<Result<pb::Booth, Status>>>>>,
 }
 
@@ -56,40 +66,34 @@ impl Default for MyServer {
 	}
 }
 
-fn get_booth_state(users: &HashMap<UserId, User>, booth: &Booth) -> pb::booth::Playing {
-	pb::booth::Playing {
-		dj: booth.dj.0,
-		track: Some(booth.track.clone()),
-		queue: booth
-			.user_queue
-			.iter()
-			.map(|uid| {
-				users
-					.get(uid)
-					.unwrap()
-					.queue
-					.as_ref()
-					.unwrap()
-					.front()
-					.unwrap()
-					.clone()
-			})
-			.collect(),
+fn get_booth_state(users: &HashMap<UserId, User>, booth: &Booth) -> Option<pb::booth::Playing> {
+	if let Some(dj) = &booth.current_dj {
+		Some(pb::booth::Playing {
+			dj: dj.user.0,
+			track: Some(dj.track.clone()),
+			elapsed: dj.started_at.elapsed().as_millis() as u64,
+			queue: booth
+				.user_queue
+				.iter()
+				.map(|uid| QueuedTrack {
+					track: Some(users.get(uid).unwrap().queue.front().unwrap().clone()),
+					user: Some(pb::UserId { id: uid.0 }),
+				})
+				.collect(),
+		})
+	} else {
+		None
 	}
 }
 
 impl MyServer {
 	pub async fn send_booth_state(&self) -> Result<(), Box<dyn std::error::Error>> {
 		let booth = pb::Booth {
-			playing: self
-				.booth
-				.read()
-				.unwrap()
-				.as_ref()
-				.map(|booth| get_booth_state(&self.users.read().unwrap(), booth)),
+			playing: get_booth_state(&self.users.read(), &self.booth.read()),
 		};
-		for sender in self.booth_listeners.read().unwrap().iter() {
-			sender.send(Result::Ok(booth.clone())).await?;
+		let listeners = self.booth_listeners.read().clone();
+		for sender in listeners {
+			sender.send(Result::Ok(booth.clone())).await?
 		}
 		Ok(())
 	}
@@ -100,7 +104,7 @@ impl pb::hubdj_server::Hubdj for MyServer {
 	async fn auth(&self, request: Request<AuthRequest>) -> HResult<AuthResponse> {
 		let (id, token) = (UserId(rand::random()), UserToken(rand::random()));
 
-		let mut users = self.users.write().unwrap();
+		let mut users = self.users.write();
 
 		users.insert(
 			id,
@@ -108,7 +112,7 @@ impl pb::hubdj_server::Hubdj for MyServer {
 				id,
 				token,
 				name: request.into_inner().name,
-				queue: None,
+				queue: VecDeque::new(),
 			},
 		);
 
@@ -123,15 +127,15 @@ impl pb::hubdj_server::Hubdj for MyServer {
 
 	async fn get_user(&self, request: Request<pb::UserId>) -> HResult<pb::User> {
 		let id = UserId(request.into_inner().id);
-		let users = self.users.read().unwrap();
+		let users = self.users.read();
 		let user = users
 			.get(&id)
 			.ok_or(Status::not_found("user does not exist"))?;
 		Ok(Response::new(pb::User {
 			id: id.0,
 			name: user.name.clone(),
-			queue: user.queue.clone().map(|q| pb::user::Queue {
-				tracks: Vec::from(q),
+			queue: Some(pb::user::Queue {
+				tracks: Vec::from(user.queue.clone()),
 			}),
 		}))
 	}
@@ -144,16 +148,12 @@ impl pb::hubdj_server::Hubdj for MyServer {
 		let (tx, rx) = mpsc::channel(128);
 		let booth = self.booth.clone();
 		let users = self.users.clone();
-		self.booth_listeners.write().unwrap().push(tx.clone());
+		self.booth_listeners.write().push(tx.clone());
 		tokio::spawn(async move {
 			let booth = {
-				let users = users.read().unwrap();
+				let users = users.read();
 				pb::Booth {
-					playing: booth
-						.read()
-						.unwrap()
-						.as_ref()
-						.map(|booth| get_booth_state(&users, booth)),
+					playing: get_booth_state(&users, &booth.read()),
 				}
 			};
 			if let Err(_) = tx.send(Result::Ok(booth)).await {
@@ -171,20 +171,70 @@ impl pb::hubdj_server::Hubdj for MyServer {
 		request: Request<SubmitPlaylistRequest>,
 	) -> HResult<pb::Status> {
 		let args = request.into_inner();
-		let mut users = self.users.write().unwrap();
-		let user = users.get_mut(&UserId(args.token));
+		let mut users = self.users.write();
+		let user = users
+			.values_mut()
+			.find(|u| u.token == UserToken(args.token));
 		if let Some(user) = user {
-			user.queue = Some(VecDeque::from_iter(
-				args.playlist.unwrap().tracks.into_iter(),
-			));
+			user.queue = VecDeque::from_iter(args.playlist.unwrap().tracks.into_iter());
+		}
+		Ok(Response::new(pb::Status { ok: true }))
+	}
+
+	async fn join_queue(&self, request: Request<JoinQueueRequest>) -> HResult<pb::Status> {
+		let token = request.into_inner().token;
+		let success = {
+			let users = self.users.read();
+			let user = users.values().find(|u| u.token == UserToken(token));
+			if let Some(user) = user {
+				let mut booth = self.booth.write();
+				booth.user_queue.push_back(user.id);
+				true
+			} else {
+				false
+			}
+		};
+		// if success {
+		// 	self.send_booth_state().await.unwrap();
+		// }
+		Ok(Response::new(pb::Status { ok: success }))
+	}
+
+	async fn leave_queue(&self, request: Request<LeaveQueueRequest>) -> HResult<pb::Status> {
+		let token = request.into_inner().token;
+		let users = self.users.read();
+		let user = users.values().find(|u| u.token == UserToken(token));
+		if let Some(user) = user {
+			let mut booth = self.booth.write();
+			booth.user_queue.retain(|u| *u != user.id);
 		}
 		Ok(Response::new(pb::Status { ok: true }))
 	}
 }
 
-pub struct Runner {
-	plugins: Arc<RwLock<Vec<Box<dyn SourcePlugin>>>>,
-	server: MyServer,
+// pub struct Runner {
+// 	plugins: Arc<RwLock<Vec<Box<dyn SourcePlugin>>>>,
+// 	server: MyServer,
+// }
+
+fn handle_track(
+	plugins: &[Box<dyn tf_plugin::SourcePlugin>],
+	track: &pb::Track,
+) -> anyhow::Result<tf_plugin::player::TrackInfo> {
+	let url = track
+		.url
+		.parse::<Url>()
+		.map_err(|e| anyhow!("invalid url: {e}"))?;
+	let track = plugins
+		.iter()
+		.filter_map(|p| {
+			p.handle_url(&url)
+				.map(|p| p.map_err(|e| anyhow!("failed to handle this track: {e}")))
+		})
+		.next()
+		.ok_or(anyhow!("no plugin can handle this track"))
+		.and_then(|r| r.context("failed to handle this track"))?;
+	Ok(track.info)
 }
 
 #[tokio::main]
@@ -213,47 +263,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 		loop {
 			interval.tick().await;
-			let mut booth = server.booth.write().unwrap();
-			let mut users = server.users.write().unwrap();
-			if let Some(booth) = booth.as_mut() {
-				if booth.started_at.elapsed() >= booth.duration {
-					for _ in 0..50 {
-						booth.user_queue.push_back(booth.dj);
-						let next_dj = booth.user_queue.pop_front().unwrap();
-						booth.dj = next_dj;
-						let dj_queue = users.get_mut(&next_dj).unwrap().queue.as_mut().unwrap();
-						let next_track = dj_queue.pop_front().unwrap();
-						booth.track = next_track.clone();
-
-						match next_track
-							.url
-							.parse::<Url>()
-							.map_err(|e| anyhow!("invalid url: {e}"))
-							.and_then(|url| {
-								plugins
-									.iter()
-									.filter_map(|p| {
-										p.handle_url(&url).map(|p| {
-											p.map_err(|e| {
-												anyhow!("failed to handle this track: {e}")
-											})
-										})
-									})
-									.next()
-									.ok_or(anyhow!("no plugin can handle this track"))
-							}) {
-							Ok(_) => {
+			let changed = {
+				let mut changed = false;
+				let mut booth = server.booth.write();
+				let mut users = server.users.write();
+				// println!("{booth:#?} {users:#?}");
+				if let Some(dj) = booth.current_dj.take() {
+					if dj.started_at.elapsed() >= dj.duration {
+						booth.user_queue.push_back(dj.user);
+						booth.current_dj = None;
+						changed = true;
+					}
+					booth.current_dj = Some(dj);
+				}
+				while booth.current_dj.is_none() && booth.user_queue.len() > 0 {
+					changed = true;
+					let next_dj = booth.user_queue.pop_front().unwrap();
+					let dj_queue = &mut users.get_mut(&next_dj).unwrap().queue;
+					if let Some(next_track) = dj_queue.pop_front() {
+						match handle_track(&plugins, &next_track) {
+							Ok(track) => {
+								let new_dj = CurrentDj {
+									user: next_dj,
+									track: next_track.clone(),
+									started_at: Instant::now(),
+									duration: track.duration,
+								};
+								booth.current_dj = Some(new_dj);
 								dj_queue.push_back(next_track.clone());
 							}
 							Err(e) => {
 								println!("{e}");
-								if dj_queue.len() == 0 {
-									panic!("oops no tracks");
-								}
 							}
 						}
+					} else {
+						println!("dj had no tracks");
+						continue;
 					}
 				}
+				changed
+			};
+			if changed {
+				server.send_booth_state().await.ok(); // TODO: remove disconnected listeners
 			}
 		}
 	});

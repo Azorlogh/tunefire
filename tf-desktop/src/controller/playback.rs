@@ -277,7 +277,6 @@ impl<W: Widget<State>> Controller<State, W> for PlaybackController {
 	) {
 		if let LifeCycle::WidgetAdded = event {
 			self.spawn_event_thread(ctx.get_external_handle());
-			// TODO: self.spawn_source_thread();
 			self.media_controls = MediaControls::new(ctx.window()).ok();
 		}
 		child.lifecycle(ctx, event, data, env)

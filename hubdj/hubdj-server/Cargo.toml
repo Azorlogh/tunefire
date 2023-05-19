@@ -15,6 +15,7 @@ url = "2.3"
 rand = "0.8"
 hubdj-core = { path = "../hubdj-core" }
 anyhow = "1.0"
+parking_lot = "0.12"
 
 tf-plugin = { path = "../../tf-plugin" }
 tf-plugin-soundcloud = { path = "../../plugins/tf-plugin-soundcloud" }

@@ -19,3 +19,4 @@ druid = { git = "https://github.com/linebender/druid.git", commit = "af94bdd0279
 directories = "4.0.1"
 tracing = "0.1.36"
 palette = "0.6.1"
+crossbeam-channel = "0.5.6"

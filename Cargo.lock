@@ -1587,6 +1587,7 @@ name = "hubdj-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "directories",
  "druid",
  "hubdj-core",
@@ -1594,7 +1595,12 @@ dependencies = [
  "prost",
  "tf-db",
  "tf-gui",
+ "tf-player",
+ "tf-plugin",
+ "tf-plugin-soundcloud",
+ "tf-plugin-youtube",
  "tokio",
+ "tokio-stream",
  "tonic",
  "tonic-build",
  "tracing",
@@ -1610,6 +1616,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hubdj-core",
+ "parking_lot 0.12.1",
  "prost",
  "rand",
  "tf-plugin",

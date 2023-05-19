@@ -50,6 +50,7 @@ impl SoundcloudSource {
 
 impl Source for SoundcloudSource {
 	fn seek(&mut self, pos: Duration) -> Result<(), SourceError> {
+		tracing::error!("SEEKING TO {pos:?}");
 		// Once symphonia's Mp3Reader supports SeekMode::Coarse,
 		// we can just replace this by: self.source.seek(pos)
 		// Until then, we recreate the source at the new location

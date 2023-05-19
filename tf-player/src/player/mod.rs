@@ -113,6 +113,7 @@ impl Player {
 					self.source_queue.push_back(source);
 					self.nb_queued
 						.store(self.source_queue.len(), atomic::Ordering::Relaxed);
+					self.next_source();
 				}
 				Command::Play => {
 					self.state.write().play().ok();
@@ -129,9 +130,10 @@ impl Player {
 						.unwrap();
 				}
 				Command::Seek(position) => {
-					self.state.write().seek(position).unwrap();
+					self.state.write().seek(position).ok();
 					match self.source.as_mut().map(|s| s.signal.seek(position)) {
 						Some(Err(e)) => error!("{e:?}"),
+						None => error!("tried to seek but there is no source"),
 						_ => {}
 					}
 				}

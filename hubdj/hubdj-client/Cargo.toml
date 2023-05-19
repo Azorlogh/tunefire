@@ -7,15 +7,22 @@ build = "../build.rs"
 [dependencies]
 anyhow = "1.0"
 tokio = { version = "1.28", features = ["full"] }
+tokio-stream = { version = "0.1" }
 tonic = "0.9"
 prost = "0.11"
 druid = { workspace = true, features = ["im", "raw-win-handle"] }
-hubdj-core = { path = "../hubdj-core" }
-tf-db = { path = "../../tf-db" }
-tf-gui = { path = "../../tf-gui" }
+crossbeam-channel =  { workspace = true }
 directories = { workspace = true }
 tracing = { workspace = true }
 palette = { workspace = true }
+hubdj-core = { path = "../hubdj-core" }
+tf-db = { path = "../../tf-db" }
+tf-gui = { path = "../../tf-gui" }
+tf-player = { path = "../../tf-player" }
+tf-plugin = { path = "../../tf-plugin" }
+
+tf-plugin-soundcloud = { path = "../../plugins/tf-plugin-soundcloud" }
+tf-plugin-youtube = { path = "../../plugins/tf-plugin-youtube" }
 
 [build-dependencies]
 tonic-build = "0.9"

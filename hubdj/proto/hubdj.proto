@@ -9,13 +9,16 @@ service Hubdj {
   rpc GetUser(UserId) returns (User) {}
   rpc StreamBoothState(google.protobuf.Empty) returns (stream Booth) {}
   rpc SubmitPlaylist(SubmitPlaylistRequest) returns (Status) {}
+  rpc JoinQueue(JoinQueueRequest) returns (Status) {}
+  rpc LeaveQueue(LeaveQueueRequest) returns (Status) {}
 }
 
 message Booth {
   message Playing {
     uint64 dj = 1;
     Track track = 2;
-    repeated Track queue = 3;
+    uint64 elapsed = 3;
+    repeated QueuedTrack queue = 4;
   }
   optional Playing playing = 1;
 }
@@ -26,7 +29,7 @@ message User {
   message Queue { repeated Track tracks = 1; }
   uint64 id = 1;
   string name = 2;
-  optional Queue queue = 3;
+  Queue queue = 3;
 }
 
 message AuthRequest { string name = 1; }
@@ -43,6 +46,14 @@ message SubmitPlaylistRequest {
   uint64 token = 1;
   Playlist playlist = 2;
 }
+message JoinQueueRequest { uint64 token = 1; }
+message LeaveQueueRequest { uint64 token = 1; }
+
 message Playlist { repeated Track tracks = 1; }
 
 message Track { string url = 1; }
+
+message QueuedTrack {
+  Track track = 1;
+  UserId user = 2;
+}
