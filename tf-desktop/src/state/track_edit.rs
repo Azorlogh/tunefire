@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::TagSuggestions;
 use crate::widget::common::smart_list::IdentifiedVector;
 
-#[derive(Clone, Data, Lens)]
+#[derive(Clone, Data, Lens, Debug)]
 pub struct TrackEdit {
 	pub id: Rc<Uuid>,
 	pub title: String,

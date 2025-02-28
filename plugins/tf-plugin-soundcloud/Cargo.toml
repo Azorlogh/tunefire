@@ -12,7 +12,7 @@ percent-encoding = "2.2.0"
 tracing = "0.1.37"
 tf-plugin = { path = "../../tf-plugin" }
 ureq = "2.5.0"
-regex = "1.7.0"
+regex = "1.11.1"
 serde = { version = "1.0.152", features=["derive"] }
 serde_json = "1.0.91"
 image = "0.24.5"

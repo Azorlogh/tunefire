@@ -3,7 +3,7 @@ use std::sync::Arc;
 use druid::{im, ArcStr, Data, Lens};
 use uuid::Uuid;
 
-#[derive(Clone, Data, Lens)]
+#[derive(Clone, Data, Lens, Debug)]
 pub struct Track {
 	pub id: Arc<Uuid>,
 	pub source: ArcStr,

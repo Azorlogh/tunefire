@@ -21,6 +21,7 @@ use crate::{
 	},
 };
 
+// TODO make it closable by pressing ESCAPE key
 pub fn ui(db: &tf_db::Client) -> impl Widget<TrackEdit> {
 	let col = Flex::column()
 		.cross_axis_alignment(CrossAxisAlignment::Fill)
@@ -87,7 +88,7 @@ pub fn ui(db: &tf_db::Client) -> impl Widget<TrackEdit> {
 				.controller(TagSearch::new(&db, TrackEdit::tag_suggestions)),
 		)
 		.with_child(
-			FocusableButton::new("+").on_click(|_, data: &mut TrackEdit, _| {
+			FocusableButton::new("Add tag").on_click(|_, data: &mut TrackEdit, _| {
 				data.tags.push_back((rand::random(), ("".to_owned(), 0.5)));
 			}),
 		)

@@ -3,7 +3,7 @@ use std::time::Duration;
 use druid::{
 	keyboard_types::Key,
 	lens::{self, Field},
-	widget::{Flex, Label, List, Maybe, SizedBox, TextBox},
+	widget::{Flex, Label, List, Maybe, Scroll, SizedBox, TextBox},
 	Color, Data, Env, Event, Point, TimerToken, Widget, WidgetExt, WidgetPod,
 };
 use tf_plugin::SearchResult;
@@ -154,6 +154,7 @@ impl Widget<WData> for SearchBar {
 	}
 }
 
+// TODO make it scrollable
 fn track_suggestions() -> impl Widget<TrackSuggestions> {
 	List::new(|| {
 		Flex::row()
@@ -203,5 +204,5 @@ fn track_suggestions() -> impl Widget<TrackSuggestions> {
 		),
 		TrackSuggestions::tracks,
 	))
-	.fix_height(300.0)
+	.fix_height(500.0)
 }

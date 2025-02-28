@@ -65,9 +65,14 @@ impl AppDelegate<State> for Delegate {
 							tracks.shuffle(&mut rand::thread_rng());
 							ctx.submit_command(playback::PLAYER_CLEAR);
 							data.queue = tracks.iter().cloned().map(Into::into).collect();
-							ctx.submit_command(
-								playback::PLAYER_ENQUEUE.with(data.queue.pop_front().unwrap()),
-							);
+							if data.queue.len() != 0 {
+								ctx.submit_command(
+									playback::PLAYER_ENQUEUE
+										.with(data.queue.pop_front().expect("ERROR HERE")),
+								);
+							} else {
+								println!("No tracks.");
+							}
 						}
 						Err(e) => println!("error while querying {:?}", e),
 					},

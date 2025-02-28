@@ -94,7 +94,7 @@ fn query_box() -> impl Widget<State> {
 		.with_flex_child(
 			ControllerHost::new(
 				TextBox::new()
-					.with_placeholder("*")
+					.with_placeholder("tag filters")
 					.with_text_alignment(TextAlignment::Center),
 				OnKey::new(Key::Enter, |ctx, _, _| {
 					ctx.submit_command(command::QUERY_RUN)

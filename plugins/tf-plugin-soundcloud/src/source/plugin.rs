@@ -19,8 +19,9 @@ impl SoundcloudSourcePlugin {
 			))
 			.call()?
 			.into_string()?,
-		)? else {
-			return Err(anyhow!("url is not a track"))
+		)?
+		else {
+			return Err(anyhow!("url is not a track"));
 		};
 
 		let media_url = format!(

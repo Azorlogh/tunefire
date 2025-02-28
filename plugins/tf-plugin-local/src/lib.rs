@@ -1,13 +1,20 @@
 use anyhow::Result;
 use tf_plugin::{
 	player::{SourcePlugin, TrackInfo, TrackSource},
-	Plugin,
+	Plugin, SearchPlugin,
 };
 use url::Url;
+
+use search::LocalSearchPlugin;
+mod search;
 
 pub struct Local;
 
 impl Plugin for Local {
+	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>> {
+		Some(Box::new(LocalSearchPlugin))
+	}
+
 	fn get_source_plugin(&self) -> Option<Box<dyn tf_plugin::SourcePlugin>> {
 		Some(Box::new(LocalSourcePlugin))
 	}
