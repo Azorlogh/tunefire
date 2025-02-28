@@ -6,17 +6,16 @@ authors = ["Alix Bott <bott.alix@gmail.com>"]
 description = "A modular music player"
 license = "MIT"
 
-[features]
-default = ["local", "soundcloud", "youtube"]
-local = ["tf-plugin-local"]
-soundcloud = ["tf-plugin-soundcloud"]
-youtube = ["tf-plugin-youtube"]
+# [features]
+# default = ["local", "soundcloud", "youtube"]
+# local = ["tf-plugin-local"]
+# soundcloud = ["tf-plugin-soundcloud"]
+# youtube = ["tf-plugin-youtube"]
 
 [dependencies]
-tf-db = { path = "../tf-db" }
-tf-player = { path = "../tf-player" }
-tf-gui = { path = "../tf-gui" }
-druid = { workspace = true, features = ["im", "raw-win-handle"] }
+# tf-db = { path = "../tf-db" }
+# tf-player = { path = "../tf-player" }
+# tf-gui = { path = "../tf-gui" }
 anyhow = "1.0.57"
 parking_lot = "0.12.1"
 url = "2.2.2"
@@ -29,8 +28,9 @@ crossbeam-channel = { workspace = true }
 palette = { workspace = true }
 rand = "0.8"
 itertools = "0.10"
+iced = "0.13.1"
 
-tf-plugin = { path = "../tf-plugin" }
-tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }
-tf-plugin-soundcloud = { path = "../plugins/tf-plugin-soundcloud", optional = true }
-tf-plugin-youtube = { path = "../plugins/tf-plugin-youtube", optional = true }
+# tf-plugin = { path = "../tf-plugin" }
+# tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }
+# tf-plugin-soundcloud = { path = "../plugins/tf-plugin-soundcloud", optional = true }
+# tf-plugin-youtube = { path = "../plugins/tf-plugin-youtube", optional = true }

@@ -7,8 +7,8 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0.68"
-druid = { workspace = true, features = ["im", "raw-win-handle"] }
 tf-plugin = { path = "../../tf-plugin" }
 symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = ["mp3", "isomp4", "aac"] }
 url = "2.3.1"
 regex = "1.11.1"
+iced = "0.13.1"

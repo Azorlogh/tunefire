@@ -22,7 +22,7 @@
         };
       in {
         devShells.default = with pkgs;
-          mkShell {
+          mkShell rec {
             buildInputs = [
               openssl
               rust-bin.beta.latest.default
@@ -31,6 +31,14 @@
               alsa-lib
               gdk-pixbuf
               pango
+              xorg.libX11
+              xorg.libXcursor
+              xorg.libXrandr
+              xorg.libXi
+              xorg.libxcb
+              libxkbcommon
+              vulkan-loader
+              wayland
               cairo
               atk
               gtk3
@@ -38,6 +46,7 @@
             ];
 
             shellHook = ''
+              export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
             '';
           };
       }

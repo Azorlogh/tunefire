@@ -8,6 +8,6 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0"
-druid = { workspace = true, features = ["im", "raw-win-handle"] }
 tracing = { workspace = true }
 palette = { workspace = true }
+iced = "0.13.1"
