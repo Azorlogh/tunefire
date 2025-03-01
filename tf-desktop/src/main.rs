@@ -50,7 +50,7 @@ fn main() -> iced::Result {
 	iced::application("Tunefire", Tunefire::update, Tunefire::view)
 		.subscription(Tunefire::subscription)
 		.theme(Tunefire::theme)
-		.run_with(|| Tunefire::new(&db))
+		.run_with(|| Tunefire::new(db))
 }
 
 fn connect_to_db() -> Result<tf_db::Client> {
@@ -88,6 +88,7 @@ struct Tunefire {
 	search_source: SearchSource,
 	search_query: String,
 	track_list: Vec<tf_db::Track>,
+	current_track: Option<tf_db::Track>,
 }
 
 #[derive(Debug, Clone)]
@@ -100,10 +101,16 @@ enum Message {
 	Search,
 	SearchChange(String),
 	SourceChange(SearchSource),
+	PlayTrack(tf_db::Track),
 }
 
 impl Tunefire {
 	fn new(db: tf_db::Client) -> (Self, Task<Message>) {
+		let track_list = db
+			.to_owned()
+			.iter_tracks()
+			.map(|t| t.unwrap().1.to_owned())
+			.collect();
 		(
 			Self {
 				db,
@@ -111,7 +118,8 @@ impl Tunefire {
 				tag_filter: String::from(""),
 				search_query: String::from(""),
 				search_source: SearchSource::All,
-				track_list: db.iter_tracks().map(|t| t.unwrap().1).collect(),
+				track_list,
+				current_track: Option::None,
 			},
 			Task::none(),
 		)
@@ -119,13 +127,7 @@ impl Tunefire {
 
 	fn update(&mut self, message: Message) -> Task<Message> {
 		match message {
-			Message::Tracks => {
-				for track in self.db.iter_tracks() {
-					println!("{:?}", track);
-				}
-
-				Task::none()
-			}
+			Message::Tracks => Task::none(),
 			Message::Randomizer => {
 				println!("Random music player");
 
@@ -161,11 +163,12 @@ impl Tunefire {
 
 				Task::none()
 			}
-		}
-	}
+			Message::PlayTrack(track) => {
+				self.current_track = Some(track);
 
-	fn get_tracks(&mut self) -> Column<Text> {
-		column(self.db.iter_tracks().map(|t| text("music").into()))
+				Task::none()
+			}
+		}
 	}
 
 	fn view(&self) -> Element<Message> {
@@ -189,8 +192,19 @@ impl Tunefire {
 			.on_submit(Message::QueryTag);
 
 		// track list
-		let content =
-			container(column(self.track_list.map(|t| text("music"))).spacing(20.0)).center_x(Fill);
+		let content = container(
+			column(self.track_list.iter().map(|t| {
+				row![
+					button("PLAY").on_press(Message::PlayTrack(t.to_owned())),
+					text(t.artists.join(", ")),
+					text(" - "),
+					text(t.title.to_owned())
+				]
+				.into()
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill);
 
 		let track_list = scrollable(content)
 			.direction(scrollable::Direction::Vertical(
@@ -200,6 +214,7 @@ impl Tunefire {
 			.height(Fill);
 
 		// source_selector
+		// TODO
 		let source_selector = pick_list(
 			[
 				SearchSource::Local,
@@ -212,13 +227,18 @@ impl Tunefire {
 		);
 
 		// search bar
+		// TODO
 		let search_bar = text_input("Search", &self.search_query)
 			.align_x(Center)
 			.on_input(Message::SearchChange)
 			.on_submit(Message::Search);
 
 		// current track
-		let current_track = container(text("Current Track")).center_x(Fill);
+		// TODO
+		let current_track = match &self.current_track {
+			Some(t) => text(format!("{} - {}", t.artists.join(", "), t.title)),
+			None => text("No track."),
+		};
 
 		container(column![
 			row![sidebar, column![tag_filter_bar, track_list]],
