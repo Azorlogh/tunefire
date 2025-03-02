@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 
 #[macro_use]
@@ -5,7 +7,8 @@ mod util;
 
 mod command;
 mod state;
-mod ui;
+use crossbeam_channel::Receiver;
+// mod ui;
 use iced::alignment::Vertical::Top;
 use iced::event::listen_raw;
 // pub use state::State;
@@ -15,12 +18,18 @@ use iced::widget::{
 	text_editor, text_input, toggler, tooltip, vertical_space, Column, Scrollable, Text, Themer,
 };
 use iced::{keyboard, Center, Element, Fill, Font, Subscription, Task, Theme};
+use parking_lot::RwLock;
+use tf_db::Track;
+use tf_player::player::{Controller, Event};
+use tf_player::TrackSource;
+use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
+use tf_plugin::Plugin;
+use url::Url;
 // pub mod widget;
 // pub mod theme;
 
-use tf_db;
 mod delegate;
 
 mod media_controls;
@@ -45,7 +54,7 @@ fn main() -> iced::Result {
 	// 	.init();
 
 	// start app
-	let mut db = connect_to_db().expect("Could not connect to db");
+	let db = connect_to_db().expect("Could not connect to db");
 
 	iced::application("Tunefire", Tunefire::update, Tunefire::view)
 		.subscription(Tunefire::subscription)
@@ -82,13 +91,16 @@ impl std::fmt::Display for SearchSource {
 }
 
 struct Tunefire {
+	current_track: Option<Track>,
 	db: tf_db::Client,
-	theme: Theme,
-	tag_filter: String,
-	search_source: SearchSource,
+	player_controller: Controller,
+	player_event: Receiver<Event>,
+	plugins: Vec<Arc<RwLock<Box<dyn Plugin>>>>,
 	search_query: String,
-	track_list: Vec<tf_db::Track>,
-	current_track: Option<tf_db::Track>,
+	search_source: SearchSource,
+	tag_filter: String,
+	theme: Theme,
+	track_list: Vec<Track>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +113,8 @@ enum Message {
 	Search,
 	SearchChange(String),
 	SourceChange(SearchSource),
-	PlayTrack(tf_db::Track),
+	RequestPlayTrack(Track),
+	PlayTrack(TrackSource),
 }
 
 impl Tunefire {
@@ -111,15 +124,31 @@ impl Tunefire {
 			.iter_tracks()
 			.map(|t| t.unwrap().1.to_owned())
 			.collect();
+		let (player_controller, player_event) = tf_player::player::Player::spawn().unwrap();
+
+		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
+		#[cfg(feature = "local")]
+		plugins.push(Box::new(tf_plugin_local::Local));
+		// #[cfg(feature = "soundcloud")]
+		// plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
+		// #[cfg(feature = "youtube")]
+		// plugins.push(Box::new(tf_plugin_youtube::Youtube::new().unwrap()));
+
 		(
 			Self {
+				current_track: Option::None,
 				db,
-				theme: Theme::Dark,
-				tag_filter: String::from(""),
+				player_controller,
+				player_event,
+				plugins: plugins
+					.into_iter()
+					.map(|p| Arc::new(RwLock::new(p)))
+					.collect(),
 				search_query: String::from(""),
 				search_source: SearchSource::All,
+				tag_filter: String::from(""),
+				theme: Theme::Dark,
 				track_list,
-				current_track: Option::None,
 			},
 			Task::none(),
 		)
@@ -163,12 +192,45 @@ impl Tunefire {
 
 				Task::none()
 			}
-			Message::PlayTrack(track) => {
+			Message::RequestPlayTrack(track) => {
 				self.current_track = Some(track);
 
 				Task::none()
 			}
+			Message::PlayTrack(source) => {
+				self.player_controller.queue_track(source);
+
+				Task::none()
+			}
 		}
+	}
+
+	fn request_track_audio_source(self, track: &Track) -> Task<Message> {
+		let url = Url::parse(&track.source).unwrap();
+		let track = track.clone();
+		let plugins = self.plugins.clone();
+		Task::perform(
+			async move {
+				if let Some(result) = plugins
+					.iter()
+					.filter_map(|p| p.read().get_source_plugin())
+					.find_map(|p| p.handle_url(&url))
+				{
+					match result {
+						Ok(source) => Some(source),
+						Err(e) => {
+							warn!("error while handling track {url:?}: {e}");
+							Option::None
+						}
+					}
+				} else {
+					warn!("no plugin could handle the track: {url:?}");
+					Option::None
+				}
+			},
+			|res| res,
+		)
+		.and_then(|res| Task::done(Message::PlayTrack(res)))
 	}
 
 	fn view(&self) -> Element<Message> {
@@ -195,7 +257,7 @@ impl Tunefire {
 		let content = container(
 			column(self.track_list.iter().map(|t| {
 				row![
-					button("PLAY").on_press(Message::PlayTrack(t.to_owned())),
+					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
 					text(t.artists.join(", ")),
 					text(" - "),
 					text(t.title.to_owned())
@@ -235,15 +297,18 @@ impl Tunefire {
 
 		// current track
 		// TODO
-		let current_track = match &self.current_track {
-			Some(t) => text(format!("{} - {}", t.artists.join(", "), t.title)),
-			None => text("No track."),
+		let media_bar = match &self.current_track {
+			Some(t) => row![
+				button("Play"),
+				text(format!("{} - {}", t.artists.join(", "), t.title))
+			],
+			None => row![text("No track.")],
 		};
 
 		container(column![
 			row![sidebar, column![tag_filter_bar, track_list]],
 			row![source_selector, search_bar],
-			current_track,
+			media_bar,
 		])
 		.padding([PADDING, PADDING])
 		.into()
