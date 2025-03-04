@@ -4,7 +4,7 @@ use anyhow::Result;
 pub use tf_player::{self as player, SourcePlugin};
 use url::Url;
 
-pub trait Plugin {
+pub trait Plugin: Send + Sync {
 	fn get_search_plugin(&self) -> Option<Box<dyn SearchPlugin>> {
 		None
 	}

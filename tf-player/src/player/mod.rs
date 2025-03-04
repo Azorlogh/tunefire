@@ -33,6 +33,7 @@ pub enum Command {
 	Pause,
 	Seek(Duration),
 	Skip,
+	Previous,
 	SetVolume(f32),
 }
 
@@ -85,7 +86,7 @@ impl Player {
 					stream,
 					event_sender,
 					last_report: Duration::from_secs(0),
-					volume: 1.0,
+					volume: 0.5,
 				};
 				loop {
 					player.process();
@@ -131,7 +132,7 @@ impl Player {
 				}
 				Command::Seek(position) => {
 					self.state.write().seek(position).ok();
-					match self.source.as_mut().map(|s| s.signal.seek(position)) {
+					match self.source.as_mut().map(|s| s.signal.lock().seek(position)) {
 						Some(Err(e)) => error!("{e:?}"),
 						None => error!("tried to seek but there is no source"),
 						_ => {}
@@ -140,6 +141,10 @@ impl Player {
 				Command::Skip => {
 					*self.state.write() = State::Idle;
 					self.next_source();
+				}
+				Command::Previous => {
+					*self.state.write() = State::Idle;
+					self.previous_source();
 				}
 				Command::SetVolume(v) => {
 					self.volume = v;
@@ -153,6 +158,23 @@ impl Player {
 			return;
 		}
 		if let Some(mut source) = self.source_queue.pop_front() {
+			let source_sample_rate = source.sample_rate;
+			let mut resampler =
+				Resampler::new((self.config.sample_rate.0 as f64) / source_sample_rate).unwrap();
+			resampler.process(&mut source).ok();
+			self.resampler = Some(resampler);
+			self.state.write().set_track(source.info.clone());
+			self.source = Some(source);
+			self.nb_queued
+				.store(self.source_queue.len(), atomic::Ordering::Relaxed);
+		}
+	}
+
+	pub fn previous_source(&mut self) {
+		if *self.state.read() != State::Idle {
+			return;
+		}
+		if let Some(mut source) = self.source_queue.pop_back() {
 			let source_sample_rate = source.sample_rate;
 			let mut resampler =
 				Resampler::new((self.config.sample_rate.0 as f64) / source_sample_rate).unwrap();

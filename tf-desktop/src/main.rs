@@ -14,10 +14,10 @@ use iced::event::listen_raw;
 // pub use state::State;
 // use tf_gui::data;
 use iced::widget::{
-	button, center, column, container, horizontal_space, pick_list, row, scrollable, text,
+	button, center, column, container, horizontal_space, pick_list, row, scrollable, slider, text,
 	text_editor, text_input, toggler, tooltip, vertical_space, Column, Scrollable, Text, Themer,
 };
-use iced::{keyboard, Center, Element, Fill, Font, Subscription, Task, Theme};
+use iced::{keyboard, Center, Element, Fill, Font, Size, Subscription, Task, Theme};
 use parking_lot::RwLock;
 use tf_db::Track;
 use tf_player::player::{Controller, Event};
@@ -57,6 +57,7 @@ fn main() -> iced::Result {
 	let db = connect_to_db().expect("Could not connect to db");
 
 	iced::application("Tunefire", Tunefire::update, Tunefire::view)
+		.window_size(Size::new(1080.0, 720.0))
 		.subscription(Tunefire::subscription)
 		.theme(Tunefire::theme)
 		.run_with(|| Tunefire::new(db))
@@ -101,20 +102,27 @@ struct Tunefire {
 	tag_filter: String,
 	theme: Theme,
 	track_list: Vec<Track>,
+	volume: f32,
+	history: Vec<Track>, // TODO delete entry in history and queue
+	queue: Vec<Track>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
-	Randomizer,
-	Tracks,
-	Tags,
+	AddTrackToQueue(TrackSource),
 	QueryTag,
 	QueryTagChange(String),
+	Randomizer,
+	RequestPlayTrack(Track),
 	Search,
 	SearchChange(String),
 	SourceChange(SearchSource),
-	RequestPlayTrack(Track),
-	PlayTrack(TrackSource),
+	Tags,
+	Tracks,
+	ChangeVolume(f32),
+	PlayPause,
+	Next,
+	Previous,
 }
 
 impl Tunefire {
@@ -149,6 +157,9 @@ impl Tunefire {
 				tag_filter: String::from(""),
 				theme: Theme::Dark,
 				track_list,
+				volume: 50.0,
+				history: Vec::new(),
+				queue: Vec::new(),
 			},
 			Task::none(),
 		)
@@ -193,21 +204,68 @@ impl Tunefire {
 				Task::none()
 			}
 			Message::RequestPlayTrack(track) => {
-				self.current_track = Some(track);
+				match self.current_track {
+					Some(_) => {
+						self.queue.push(track.clone());
+					}
+					None => self.current_track = Some(track.clone()),
+				};
+
+				self.request_track_audio_source(&track)
+			}
+			Message::AddTrackToQueue(source) => {
+				self.player_controller.queue_track(source).unwrap();
 
 				Task::none()
 			}
-			Message::PlayTrack(source) => {
-				self.player_controller.queue_track(source);
+			Message::ChangeVolume(val) => {
+				self.volume = val;
+
+				let _ = self.player_controller.set_volume(self.volume / 100.0);
+
+				Task::none()
+			}
+			Message::PlayPause => {
+				let _ = self.player_controller.play_pause();
+
+				Task::none()
+			}
+			Message::Next => {
+				println!("{:?}", self.queue);
+				match self.queue.pop() {
+					Some(t) => {
+						self.history.push(self.current_track.clone().unwrap());
+						self.current_track = Some(t.clone());
+						self.player_controller.skip().unwrap();
+						self.player_controller.play().unwrap();
+						return self.request_track_audio_source(&t);
+					}
+					None => {}
+				}
+
+				Task::none()
+			}
+			Message::Previous => {
+				println!("{:?}", self.history);
+				match self.history.pop() {
+					Some(t) => {
+						self.queue.push(self.current_track.clone().unwrap());
+						self.current_track = Some(t.clone());
+						self.player_controller.previous().unwrap();
+						self.player_controller.play().unwrap();
+						return self.request_track_audio_source(&t);
+					}
+					None => {}
+				}
 
 				Task::none()
 			}
 		}
 	}
 
-	fn request_track_audio_source(self, track: &Track) -> Task<Message> {
+	fn request_track_audio_source(&self, track: &Track) -> Task<Message> {
 		let url = Url::parse(&track.source).unwrap();
-		let track = track.clone();
+		let t = track.clone();
 		let plugins = self.plugins.clone();
 		Task::perform(
 			async move {
@@ -230,7 +288,7 @@ impl Tunefire {
 			},
 			|res| res,
 		)
-		.and_then(|res| Task::done(Message::PlayTrack(res)))
+		.and_then(|res| Task::done(Message::AddTrackToQueue(res)))
 	}
 
 	fn view(&self) -> Element<Message> {
@@ -299,9 +357,34 @@ impl Tunefire {
 		// TODO
 		let media_bar = match &self.current_track {
 			Some(t) => row![
-				button("Play"),
-				text(format!("{} - {}", t.artists.join(", "), t.title))
-			],
+				row![
+					text("artwork"),
+					column![
+						text(format!("{}", t.title)),
+						text(format!("{}", t.artists.join(", ")))
+					]
+				]
+				.spacing(4.0),
+				horizontal_space(),
+				column![
+					row![
+						button("shuffle"),
+						button("previous").on_press(Message::Previous),
+						button("play_pause").on_press(Message::PlayPause),
+						button("next").on_press(Message::Next),
+						button("replay")
+					]
+					.spacing(4.0),
+					text("track timer bar")
+				],
+				horizontal_space(),
+				column![row![
+					text("volume"),
+					slider(0.0..=100.0, self.volume, Message::ChangeVolume)
+				]
+				.spacing(4.0)],
+			]
+			.align_y(Center),
 			None => row![text("No track.")],
 		};
 

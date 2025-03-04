@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use anyhow::Result;
+use parking_lot::Mutex;
 use tf_plugin::{
 	player::{SourcePlugin, TrackInfo, TrackSource},
 	Plugin, SearchPlugin,
@@ -37,7 +40,7 @@ impl SourcePlugin for LocalSourcePlugin {
 								duration: source.duration,
 							},
 							sample_rate: source.sample_rate,
-							signal: Box::new(source),
+							signal: Arc::new(Mutex::new(source)),
 						}
 					});
 				Some(source)

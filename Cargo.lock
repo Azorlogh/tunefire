@@ -5830,6 +5830,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "iced",
+ "parking_lot 0.12.3",
  "regex",
  "symphonia",
  "tf-plugin",

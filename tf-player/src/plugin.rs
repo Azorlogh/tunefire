@@ -1,7 +1,8 @@
 use core::fmt;
-use std::time::Duration;
+use std::{rc::Rc, sync::Arc, time::Duration};
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use url::Url;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -9,10 +10,11 @@ pub struct TrackInfo {
 	pub duration: Duration,
 }
 
+#[derive(Clone)]
 pub struct TrackSource {
-	pub sample_rate: f64,
-	pub signal: Box<dyn Source>,
 	pub info: TrackInfo,
+	pub sample_rate: f64,
+	pub signal: Arc<Mutex<dyn Source>>,
 }
 
 impl fmt::Debug for TrackSource {

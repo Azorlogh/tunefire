@@ -39,7 +39,7 @@ impl Resampler {
 
 	pub fn process(&mut self, source: &mut TrackSource) -> Result<(), SourceError> {
 		let in_len = self.resampler.input_frames_next();
-		source.signal.next(&mut self.source_buf[..in_len])?;
+		source.signal.lock().next(&mut self.source_buf[..in_len])?;
 
 		self.in_buf[0].clear();
 		self.in_buf[1].clear();

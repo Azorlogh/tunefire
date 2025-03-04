@@ -12,3 +12,4 @@ symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = ["mp3",
 url = "2.3.1"
 regex = "1.11.1"
 iced = "0.13.1"
+parking_lot = "0.12.1"

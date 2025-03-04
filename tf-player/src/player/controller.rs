@@ -87,6 +87,11 @@ impl Controller {
 		Ok(())
 	}
 
+	pub fn previous(&self) -> Result<()> {
+		self.sender.send(Command::Skip).unwrap();
+		Ok(())
+	}
+
 	pub fn set_volume(&self, volume: f32) -> Result<()> {
 		self.sender.send(Command::SetVolume(volume)).unwrap();
 		Ok(())
