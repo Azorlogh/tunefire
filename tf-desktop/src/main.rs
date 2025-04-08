@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -27,6 +28,7 @@ use tracing_subscriber::EnvFilter;
 
 use tf_plugin::Plugin;
 use url::Url;
+use uuid::Uuid;
 // pub mod widget;
 // pub mod theme;
 
@@ -85,14 +87,15 @@ impl std::fmt::Display for SearchSource {
 		f.write_str(match self {
 			SearchSource::All => "All",
 			SearchSource::Local => "Local",
-			SearchSource::Soundcloud => "Soundcloud",
-			SearchSource::Youtube => "Youtube",
+			SearchSource::Soundcloud => "SoundCloud",
+			SearchSource::Youtube => "YouTube",
 		})
 	}
 }
 
 struct Tunefire {
-	current_track: Option<Track>,
+	current_idx: usize,
+	// current_track: Option<Track>,
 	db: tf_db::Client,
 	player_controller: Controller,
 	player_event: Receiver<Event>,
@@ -101,14 +104,16 @@ struct Tunefire {
 	search_source: SearchSource,
 	tag_filter: String,
 	theme: Theme,
-	track_list: Vec<Track>,
+	track_list: Vec<Track>, // TODO use playlists instead
 	volume: f32,
-	history: Vec<Track>, // TODO delete entry in history and queue
 	queue: Vec<Track>,
+	playlists: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
+	AddPlaylist(String),
+	DeletePlaylist(String),
 	AddTrackToQueue(TrackSource),
 	QueryTag,
 	QueryTagChange(String),
@@ -118,11 +123,11 @@ enum Message {
 	SearchChange(String),
 	SourceChange(SearchSource),
 	Tags,
-	Tracks,
 	ChangeVolume(f32),
 	PlayPause,
 	Next,
 	Previous,
+	DeleteTrack(Track),
 }
 
 impl Tunefire {
@@ -131,6 +136,11 @@ impl Tunefire {
 			.to_owned()
 			.iter_tracks()
 			.map(|t| t.unwrap().1.to_owned())
+			.collect();
+		let playlists = db
+			.to_owned()
+			.iter_playlists()
+			.map(|p| p.unwrap().1.to_owned())
 			.collect();
 		let (player_controller, player_event) = tf_player::player::Player::spawn().unwrap();
 
@@ -144,7 +154,8 @@ impl Tunefire {
 
 		(
 			Self {
-				current_track: Option::None,
+				// current_track: Option::None,
+				current_idx: 0,
 				db,
 				player_controller,
 				player_event,
@@ -158,16 +169,37 @@ impl Tunefire {
 				theme: Theme::Dark,
 				track_list,
 				volume: 50.0,
-				history: Vec::new(),
 				queue: Vec::new(),
+				playlists,
 			},
 			Task::none(),
 		)
 	}
 
+	fn add_playlist(&mut self, name: &str) -> Result<Uuid> {
+		let id = self.db.add_playlist(name)?;
+		if !self.playlists.iter().any(|v| v == name) {
+			self.playlists.push(name.to_string());
+		}
+
+		Ok(id)
+	}
+
 	fn update(&mut self, message: Message) -> Task<Message> {
 		match message {
-			Message::Tracks => Task::none(),
+			Message::DeletePlaylist(name) => {
+				let pid = self.db.get_playlist_by_name(&name).unwrap();
+				let _ = self.db.delete_playlist(pid);
+				if let Some(index) = self.playlists.iter().position(|value| *value == name) {
+					self.playlists.swap_remove(index);
+				}
+				Task::none()
+			}
+			Message::AddPlaylist(name) => {
+				self.add_playlist(&name)
+					.expect("Could not add playlist : {name}");
+				Task::none()
+			}
 			Message::Randomizer => {
 				println!("Random music player");
 
@@ -204,14 +236,18 @@ impl Tunefire {
 				Task::none()
 			}
 			Message::RequestPlayTrack(track) => {
-				match self.current_track {
-					Some(_) => {
-						self.queue.push(track.clone());
-					}
-					None => self.current_track = Some(track.clone()),
-				};
+				let current_track = &self.queue;
+				println!("Current Queue : {:?}", current_track);
+				println!("Requesting : {:?}", track);
+				// match current_track {
+				// 	Some(_) => {
+				// 		self.queue.push(track.clone());
+				// 	}
+				// 	None => current_track = Some(track.clone()),
+				// };
 
-				self.request_track_audio_source(&track)
+				// self.request_track_audio_source(&track)
+				Task::none()
 			}
 			Message::AddTrackToQueue(source) => {
 				self.player_controller.queue_track(source).unwrap();
@@ -232,32 +268,43 @@ impl Tunefire {
 			}
 			Message::Next => {
 				println!("{:?}", self.queue);
-				match self.queue.pop() {
-					Some(t) => {
-						self.history.push(self.current_track.clone().unwrap());
-						self.current_track = Some(t.clone());
-						self.player_controller.skip().unwrap();
-						self.player_controller.play().unwrap();
-						return self.request_track_audio_source(&t);
-					}
-					None => {}
-				}
+				println!("{:?}", self.current_idx);
+				// match self.queue.pop() {
+				// 	Some(t) => {
+				// 		self.current_track = Some(t.clone());
+				// 		self.player_controller.skip().unwrap();
+				// 		self.player_controller.play().unwrap();
+				// 		return self.request_track_audio_source(&t);
+				// 	}
+				// 	None => {}
+				// }
 
 				Task::none()
 			}
 			Message::Previous => {
-				println!("{:?}", self.history);
-				match self.history.pop() {
-					Some(t) => {
-						self.queue.push(self.current_track.clone().unwrap());
-						self.current_track = Some(t.clone());
-						self.player_controller.previous().unwrap();
-						self.player_controller.play().unwrap();
-						return self.request_track_audio_source(&t);
-					}
-					None => {}
-				}
+				// println!("{:?}", self.history);
+				// match self.history.pop() {
+				// 	Some(t) => {
+				// 		self.queue.push(self.current_track.clone().unwrap());
+				// 		self.current_track = Some(t.clone());
+				// 		self.player_controller.previous().unwrap();
+				// 		self.player_controller.play().unwrap();
+				// 		return self.request_track_audio_source(&t);
+				// 	}
+				// 	None => {}
+				// }
 
+				Task::none()
+			}
+			Message::DeleteTrack(track) => {
+				println!("Deleting : {:?}", track);
+				if let Some(index) = self
+					.track_list
+					.iter()
+					.position(|value| *value.source == track.source)
+				{
+					self.track_list.swap_remove(index);
+				}
 				Task::none()
 			}
 		}
@@ -265,7 +312,6 @@ impl Tunefire {
 
 	fn request_track_audio_source(&self, track: &Track) -> Task<Message> {
 		let url = Url::parse(&track.source).unwrap();
-		let t = track.clone();
 		let plugins = self.plugins.clone();
 		Task::perform(
 			async move {
@@ -295,12 +341,25 @@ impl Tunefire {
 		// sidebar
 		let width = 120.0;
 
+		let playlists = container(column(self.playlists.iter().map(|t| {
+			row![
+				text(t),
+				button("DELETE").on_press(Message::DeletePlaylist(t.to_owned()))
+			]
+			.into()
+		})));
+
 		let sidebar = column![
 			button("Randomizer")
 				.width(width)
 				.on_press(Message::Randomizer),
-			button("Tracks").width(width).on_press(Message::Tracks),
-			button("Tags").width(width).on_press(Message::Tags)
+			button("Tags").width(width).on_press(Message::Tags),
+			button("Add playlist")
+				.width(width)
+				.on_press(Message::AddPlaylist(
+					String::from_str("Default").unwrap() // TODO
+				)),
+			playlists,
 		]
 		.align_x(Center)
 		.spacing(10);
@@ -318,7 +377,8 @@ impl Tunefire {
 					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
 					text(t.artists.join(", ")),
 					text(" - "),
-					text(t.title.to_owned())
+					text(t.title.to_owned()),
+					button("DELETE").on_press(Message::DeleteTrack(t.to_owned())),
 				]
 				.into()
 			}))
@@ -355,43 +415,43 @@ impl Tunefire {
 
 		// current track
 		// TODO
-		let media_bar = match &self.current_track {
-			Some(t) => row![
-				row![
-					text("artwork"),
-					column![
-						text(format!("{}", t.title)),
-						text(format!("{}", t.artists.join(", ")))
-					]
-				]
-				.spacing(4.0),
-				horizontal_space(),
-				column![
-					row![
-						button("shuffle"),
-						button("previous").on_press(Message::Previous),
-						button("play_pause").on_press(Message::PlayPause),
-						button("next").on_press(Message::Next),
-						button("replay")
-					]
-					.spacing(4.0),
-					text("track timer bar")
-				],
-				horizontal_space(),
-				column![row![
-					text("volume"),
-					slider(0.0..=100.0, self.volume, Message::ChangeVolume)
-				]
-				.spacing(4.0)],
-			]
-			.align_y(Center),
-			None => row![text("No track.")],
-		};
+		// let media_bar = match &self.current_track {
+		// 	Some(t) => row![
+		// 		row![
+		// 			text("artwork"),
+		// 			column![
+		// 				text(format!("{}", t.title)),
+		// 				text(format!("{}", t.artists.join(", ")))
+		// 			]
+		// 		]
+		// 		.spacing(4.0),
+		// 		horizontal_space(),
+		// 		column![
+		// 			row![
+		// 				button("shuffle"),
+		// 				button("previous").on_press(Message::Previous),
+		// 				button("play_pause").on_press(Message::PlayPause),
+		// 				button("next").on_press(Message::Next),
+		// 				button("replay")
+		// 			]
+		// 			.spacing(4.0),
+		// 			text("track timer bar")
+		// 		],
+		// 		horizontal_space(),
+		// 		column![row![
+		// 			text("volume"),
+		// 			slider(0.0..=100.0, self.volume, Message::ChangeVolume)
+		// 		]
+		// 		.spacing(4.0)],
+		// 	]
+		// 	.align_y(Center),
+		// 	None => row![text("No track.")],
+		// };
 
 		container(column![
 			row![sidebar, column![tag_filter_bar, track_list]],
 			row![source_selector, search_bar],
-			media_bar,
+			// media_bar,
 		])
 		.padding([PADDING, PADDING])
 		.into()
