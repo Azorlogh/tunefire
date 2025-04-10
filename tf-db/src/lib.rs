@@ -1,4 +1,9 @@
-use std::{collections::HashSet, io::Read, path::Path};
+use std::{
+	collections::{HashMap, HashSet},
+	io::Read,
+	path::Path,
+	str::FromStr,
+};
 
 use anyhow::{anyhow, Result};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -6,7 +11,7 @@ use nom::AsBytes;
 use uuid::Uuid;
 
 mod data;
-pub use data::Track;
+pub use data::{Playlist, Track};
 
 mod filter;
 pub use filter::Filter;
@@ -30,7 +35,6 @@ impl Client {
 		let tracks = db.open_tree(b"tracks")?;
 		let tags = db.open_tree(b"tags")?;
 		let playlists = db.open_tree(b"playlists")?;
-		// TODO artists ?
 
 		Ok(Client {
 			db,
@@ -40,64 +44,50 @@ impl Client {
 		})
 	}
 
-	pub fn add_playlist(&mut self, name: &str) -> Result<Uuid> {
-		let mut playlist_id = Option::None;
-		if self.playlists.iter().any(|kv| {
-			let (id, playlist_name) = kv.expect("Could not get (key, value) pair of playlists.");
-			playlist_id = Some(Uuid::from_slice(id.as_ref()));
-			playlist_name == name
-		}) {
-			Ok(playlist_id.unwrap()?)
-		} else {
-			let id = Uuid::new_v4();
-			self.db.open_tree(format!("{name}").into_bytes())?;
-			self.playlists.insert(id, name)?;
+	pub fn add_playlist(&mut self, name: &str) -> Result<String> {
+		println!("Inserting playlist : {}", name);
 
-			Ok(id)
-		}
-	}
+		self.playlists.insert(name, "")?;
 
-	pub fn get_playlist_by_name(&mut self, name: &str) -> Result<Uuid> {
-		let mut playlist_id = Option::None;
-		if self.playlists.iter().any(|kv| {
-			let (id, playlist_name) = kv.expect("Could not get (key, value) pair of playlists.");
-			playlist_id = Some(Uuid::from_slice(id.as_ref()));
-			playlist_name == name
-		}) {
-			Ok(playlist_id.unwrap()?)
-		} else {
-			Ok(Uuid::nil())
-		}
+		Ok(name.to_string())
 	}
 
 	// TODO
-	pub fn get_playlist(&self, id: Uuid) -> Result<()> {
-		let playlist_name = self.playlists.get(id)?;
-		println!("Getting playlist : {:?}", playlist_name);
-
+	pub fn set_playlist(&mut self, playlist_id: Uuid) -> Result<()> {
 		Ok(())
 	}
 
-	pub fn delete_playlist(&mut self, id: Uuid) -> Result<()> {
-		if let Some(playlist_name) = self.playlists.remove(id)? {
-			self.db.drop_tree(playlist_name)?;
-		}
+	pub fn delete_playlist(&mut self, name: &str) -> Result<()> {
+		self.playlists.remove(name)?;
 		Ok(())
 	}
 
-	pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<(Uuid, String)>> {
-		self.playlists.iter().map(|kv| {
-			let (id, playlist_name) = kv?;
-			Ok((
-				Uuid::from_bytes(id.as_ref().try_into()?),
-				std::str::from_utf8(&playlist_name).unwrap().to_string(),
-			))
-		})
-	}
+	// pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<Playlist>> {
+	// 	self.playlists.iter().map(|kv| {
+	// 		let (playlist_name, track_ids) = kv?;
+	// 		Ok()
+	// 	})
+	// }
 
 	pub fn add_track(&mut self, track: &Track) -> Result<Uuid> {
+		// Check if track already exists, by title
+		for kv in self.iter_tracks() {
+			let (id, t) = kv?;
+
+			if t.title == track.title {
+				return Ok(t.id.unwrap());
+			}
+		}
+
 		let id = Uuid::new_v4();
-		let track = serde_json::to_vec(track)?;
+		let atrack = Track {
+			id: Some(id),
+			source: track.source.to_owned(),
+			artists: track.artists.to_owned(),
+			title: track.title.to_owned(),
+			tags: track.tags.to_owned(),
+		};
+		let track = serde_json::to_vec(&atrack)?;
 		self.tracks.insert(id, track)?;
 		Ok(id)
 	}

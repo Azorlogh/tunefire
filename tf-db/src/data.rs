@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
+	pub id: Option<Uuid>,
 	pub source: String,
 	pub artists: Vec<String>,
 	pub title: String,
@@ -15,4 +16,10 @@ pub struct Track {
 pub struct Tag {
 	pub id: Uuid,
 	pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Playlist {
+	pub name: String,
+	pub tracks: Vec<Track>,
 }

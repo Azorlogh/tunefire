@@ -29,6 +29,7 @@ palette = { workspace = true }
 rand = "0.8"
 itertools = "0.10"
 iced = "0.13.1"
+rfd = "0.15.3"
 
 tf-plugin = { path = "../tf-plugin" }
 tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -18,12 +19,12 @@ use iced::widget::{
 	button, center, column, container, horizontal_space, pick_list, row, scrollable, slider, text,
 	text_editor, text_input, toggler, tooltip, vertical_space, Column, Scrollable, Text, Themer,
 };
-use iced::{keyboard, Center, Element, Fill, Font, Size, Subscription, Task, Theme};
+use iced::{keyboard, padding, Center, Element, Fill, Font, Size, Subscription, Task, Theme};
 use parking_lot::RwLock;
-use tf_db::Track;
+use tf_db::{Playlist, Track};
 use tf_player::player::{Controller, Event};
 use tf_player::TrackSource;
-use tracing::warn;
+use tracing::{warn, Instrument};
 use tracing_subscriber::EnvFilter;
 
 use tf_plugin::Plugin;
@@ -93,6 +94,9 @@ impl std::fmt::Display for SearchSource {
 	}
 }
 
+// History : last played song, allow duplicate
+// Queue : Songs to be played, ordered (can be randomized)
+
 struct Tunefire {
 	current_idx: usize,
 	// current_track: Option<Track>,
@@ -104,30 +108,39 @@ struct Tunefire {
 	search_source: SearchSource,
 	tag_filter: String,
 	theme: Theme,
-	track_list: Vec<Track>, // TODO use playlists instead
 	volume: f32,
+	track_list: Vec<Track>,
 	queue: Vec<Track>,
-	playlists: Vec<String>,
+	playlists: Vec<Playlist>,
+	current_playlist: String,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
+	// Playlist
 	AddPlaylist(String),
 	DeletePlaylist(String),
+	ShowPlaylist(String),
+	// Tracks
+	ImportLocalTracks,
+	DeleteAllTracks,
+	ShowTracks,
 	AddTrackToQueue(TrackSource),
-	QueryTag,
-	QueryTagChange(String),
-	Randomizer,
 	RequestPlayTrack(Track),
-	Search,
-	SearchChange(String),
-	SourceChange(SearchSource),
-	Tags,
 	ChangeVolume(f32),
 	PlayPause,
 	Next,
 	Previous,
 	DeleteTrack(Track),
+	// Tags
+	ShowTags,
+	QueryTag,
+	QueryTagChange(String),
+	// Pages
+	// Search
+	Search,
+	SearchChange(String),
+	SourceChange(SearchSource),
 }
 
 impl Tunefire {
@@ -137,16 +150,19 @@ impl Tunefire {
 			.iter_tracks()
 			.map(|t| t.unwrap().1.to_owned())
 			.collect();
-		let playlists = db
-			.to_owned()
-			.iter_playlists()
-			.map(|p| p.unwrap().1.to_owned())
-			.collect();
+
+		// let playlists = db
+		// 	.to_owned()
+		// 	.iter_playlists()
+		// 	.map(|p| p.unwrap().1)
+		// 	.collect();
+		let playlists = Vec::new();
+
 		let (player_controller, player_event) = tf_player::player::Player::spawn().unwrap();
 
 		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
-		#[cfg(feature = "local")]
-		plugins.push(Box::new(tf_plugin_local::Local));
+		// #[cfg(feature = "local")]
+		// plugins.push(Box::new(tf_plugin_local::Local));
 		// #[cfg(feature = "soundcloud")]
 		// plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
 		// #[cfg(feature = "youtube")]
@@ -167,45 +183,55 @@ impl Tunefire {
 				search_source: SearchSource::All,
 				tag_filter: String::from(""),
 				theme: Theme::Dark,
-				track_list,
 				volume: 50.0,
+				track_list,
 				queue: Vec::new(),
 				playlists,
+				current_playlist: String::new(),
 			},
 			Task::none(),
 		)
 	}
 
-	fn add_playlist(&mut self, name: &str) -> Result<Uuid> {
-		let id = self.db.add_playlist(name)?;
-		if !self.playlists.iter().any(|v| v == name) {
-			self.playlists.push(name.to_string());
-		}
+	fn get_local_tracks(&mut self) -> Result<Vec<Track>> {
+		match rfd::FileDialog::new()
+			.add_filter("music", &["mp3", "m4a"])
+			.pick_files()
+		{
+			Some(f) => {
+				let tracks: Vec<Track> = f
+					.iter()
+					.map(|p| Track {
+						id: Option::None,
+						source: "file://".to_string() + p.to_str().unwrap(),
+						artists: vec!["Test".to_string()],
+						title: p.file_name().unwrap().to_string_lossy().to_string(),
+						tags: HashMap::new(),
+					})
+					.collect();
 
-		Ok(id)
+				Ok(tracks)
+			}
+			None => Ok(Vec::new()),
+		}
 	}
 
 	fn update(&mut self, message: Message) -> Task<Message> {
 		match message {
 			Message::DeletePlaylist(name) => {
-				let pid = self.db.get_playlist_by_name(&name).unwrap();
-				let _ = self.db.delete_playlist(pid);
-				if let Some(index) = self.playlists.iter().position(|value| *value == name) {
-					self.playlists.swap_remove(index);
-				}
+				let _ = self.db.delete_playlist(&name);
+				Task::none()
+			}
+			Message::ShowPlaylist(name) => {
+				println!("Showing playlist view for : {}", name);
+				self.current_playlist = name;
 				Task::none()
 			}
 			Message::AddPlaylist(name) => {
-				self.add_playlist(&name)
-					.expect("Could not add playlist : {name}");
+				let _ = self.db.add_playlist(&name);
 				Task::none()
 			}
-			Message::Randomizer => {
-				println!("Random music player");
-
-				Task::none()
-			}
-			Message::Tags => {
+			Message::ShowTags => {
 				println!("Show tag window");
 
 				Task::none()
@@ -304,8 +330,34 @@ impl Tunefire {
 					.position(|value| *value.source == track.source)
 				{
 					self.track_list.swap_remove(index);
+					let _ = self.db.delete_track(track.id.unwrap());
 				}
 				Task::none()
+			}
+			Message::ShowTracks => {
+				self.track_list = self
+					.db
+					.to_owned()
+					.iter_tracks()
+					.map(|t| t.unwrap().1.to_owned())
+					.collect();
+
+				Task::none()
+			}
+			Message::DeleteAllTracks => {
+				// for (kv) in self.db.to_owned().iter_tracks() {
+				// 	let (id, t) = kv.unwrap();
+				// 	self.db.delete_track(id);
+				// }
+				Task::none()
+			}
+			Message::ImportLocalTracks => {
+				let tracks = self.get_local_tracks().unwrap();
+				for t in tracks.iter() {
+					self.db.to_owned().add_track(t);
+				}
+
+				Task::done(Message::ShowTracks)
 			}
 		}
 	}
@@ -341,25 +393,29 @@ impl Tunefire {
 		// sidebar
 		let width = 120.0;
 
-		let playlists = container(column(self.playlists.iter().map(|t| {
-			row![
-				text(t),
-				button("DELETE").on_press(Message::DeletePlaylist(t.to_owned()))
-			]
-			.into()
-		})));
+		// let playlists = container(column(self.playlists.iter().map(|t| {
+		// 	row![
+		// 		button(t.as_str()).on_press(Message::ShowPlaylist(t.to_owned())),
+		// 		button("DELETE").on_press(Message::DeletePlaylist(t.to_owned()))
+		// 	]
+		// 	.into()
+		// })));
 
 		let sidebar = column![
-			button("Randomizer")
+			button("Import")
 				.width(width)
-				.on_press(Message::Randomizer),
-			button("Tags").width(width).on_press(Message::Tags),
+				.on_press(Message::ImportLocalTracks),
+			button("Delete ALL")
+				.width(width)
+				.on_press(Message::DeleteAllTracks),
+			button("Tracks").width(width).on_press(Message::ShowTracks),
+			button("Tags").width(width).on_press(Message::ShowTags),
 			button("Add playlist")
 				.width(width)
 				.on_press(Message::AddPlaylist(
 					String::from_str("Default").unwrap() // TODO
 				)),
-			playlists,
+			// playlists,
 		]
 		.align_x(Center)
 		.spacing(10);
@@ -370,23 +426,47 @@ impl Tunefire {
 			.on_input(Message::QueryTagChange)
 			.on_submit(Message::QueryTag);
 
+		// playlist track list
+		// let content = container(
+		// 	column(
+		// 		self.db
+		// 			.iter_tracks(current_playlist_id.to_owned())
+		// 			.map(|kv| {
+		// 				let (track_id, t) = kv.unwrap();
+		// 				row![
+		// 					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
+		// 					text(t.artists.join(", ")),
+		// 					text(" - "),
+		// 					text(t.title.to_owned()),
+		// 					button("DELETE").on_press(Message::DeleteTrack(t.to_owned())),
+		// 				]
+		// 				.into()
+		// 			}),
+		// 	)
+		// 	.spacing(20.0),
+		// )
+		// .center_x(Fill);
 		// track list
-		let content = container(
+		let track_list = container(
 			column(self.track_list.iter().map(|t| {
 				row![
 					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
+					text(" "),
 					text(t.artists.join(", ")),
 					text(" - "),
 					text(t.title.to_owned()),
+					horizontal_space(),
 					button("DELETE").on_press(Message::DeleteTrack(t.to_owned())),
 				]
+				.align_y(Center)
 				.into()
 			}))
 			.spacing(20.0),
 		)
-		.center_x(Fill);
+		.center_x(Fill)
+		.padding(20.0);
 
-		let track_list = scrollable(content)
+		let track_list = scrollable(track_list)
 			.direction(scrollable::Direction::Vertical(
 				scrollable::Scrollbar::new().width(1).scroller_width(10),
 			))
@@ -448,8 +528,15 @@ impl Tunefire {
 		// 	None => row![text("No track.")],
 		// };
 
+		let history = text("History");
+		let queue = text("Queue");
+
 		container(column![
-			row![sidebar, column![tag_filter_bar, track_list]],
+			row![
+				sidebar,
+				column![tag_filter_bar, track_list],
+				column![history, queue]
+			],
 			row![source_selector, search_bar],
 			// media_bar,
 		])
@@ -476,7 +563,15 @@ impl Tunefire {
 			"Search '{:?}' from source '{}'",
 			self.search_query,
 			self.search_source.to_string()
-		)
+		);
+
+		// TODO
+		// match self.search_source {
+		// 	SearchSource::All => todo!(),
+		// 	SearchSource::Local => todo!(),
+		// 	SearchSource::Soundcloud => todo!(),
+		// 	SearchSource::Youtube => todo!(),
+		// }
 	}
 
 	fn filter_tracks_by_tag_expression(&self) {
