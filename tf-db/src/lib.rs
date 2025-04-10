@@ -44,12 +44,12 @@ impl Client {
 		})
 	}
 
-	pub fn add_playlist(&mut self, name: &str) -> Result<String> {
-		println!("Inserting playlist : {}", name);
-
-		self.playlists.insert(name, "")?;
-
-		Ok(name.to_string())
+	pub fn add_playlist(&mut self, playlist: &Playlist) -> Result<String> {
+		println!("Adding {:?}", playlist);
+		let serialized_playlist = serde_json::to_vec(&playlist)?;
+		self.playlists
+			.insert(playlist.name.to_owned(), serialized_playlist)?;
+		Ok(playlist.name.to_owned())
 	}
 
 	// TODO
@@ -58,21 +58,23 @@ impl Client {
 	}
 
 	pub fn delete_playlist(&mut self, name: &str) -> Result<()> {
+		println!("Deleting playlist : {}", name);
 		self.playlists.remove(name)?;
 		Ok(())
 	}
 
-	// pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<Playlist>> {
-	// 	self.playlists.iter().map(|kv| {
-	// 		let (playlist_name, track_ids) = kv?;
-	// 		Ok()
-	// 	})
-	// }
+	pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<Playlist>> {
+		self.playlists.iter().map(|kv| {
+			let (_, playlist) = kv?;
+
+			Ok(serde_json::from_slice::<Playlist>(&playlist.as_ref())?)
+		})
+	}
 
 	pub fn add_track(&mut self, track: &Track) -> Result<Uuid> {
 		// Check if track already exists, by title
-		for kv in self.iter_tracks() {
-			let (id, t) = kv?;
+		for v in self.iter_tracks() {
+			let t = v?;
 
 			if t.title == track.title {
 				return Ok(t.id.unwrap());
@@ -112,33 +114,25 @@ impl Client {
 		)?)
 	}
 
-	pub fn iter_tracks(&mut self) -> impl Iterator<Item = Result<(Uuid, Track)>> {
+	pub fn iter_tracks(&mut self) -> impl Iterator<Item = Result<Track>> {
 		self.tracks.iter().map(|kv| {
-			let (id, track) = kv?;
-			Ok((
-				Uuid::from_bytes(id.as_ref().try_into()?),
-				serde_json::from_slice(track.as_ref())?,
-			))
+			let (_, track) = kv?;
+			Ok(serde_json::from_slice(track.as_ref())?)
 		})
 	}
 
 	// Apply the filter to the list of tracks.
-	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<(Uuid, Track)>> {
+	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Track>> {
 		Ok(self
 			.iter_tracks()
-			.filter(|track| {
-				track
-					.as_ref()
-					.map(|(_, t)| filter.matches(t))
-					.unwrap_or(true)
-			})
-			.collect::<Result<_, _>>()?)
+			.filter(|track| track.as_ref().map(|t| filter.matches(t)).unwrap_or(true))
+			.collect::<Result<_>>()?)
 	}
 
 	pub fn get_tags(&mut self) -> Result<HashSet<String>> {
 		let mut tags = HashSet::default();
 		for t in self.iter_tracks() {
-			for (tag_name, _) in &t?.1.tags {
+			for (tag_name, _) in &t?.tags {
 				tags.insert(tag_name.to_owned());
 			}
 		}
