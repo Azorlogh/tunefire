@@ -1,6 +1,6 @@
 use std::{
 	collections::{HashMap, HashSet},
-	io::Read,
+	io::{Read, WriterPanicked},
 	path::Path,
 	str::FromStr,
 };
@@ -10,8 +10,11 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use nom::AsBytes;
 use uuid::Uuid;
 
+#[macro_use]
+mod utils;
+
 mod data;
-pub use data::{Playlist, Track};
+pub use data::{Playlist, PlaylistId, TagId, Track, TrackId};
 
 mod filter;
 pub use filter::Filter;
@@ -44,68 +47,65 @@ impl Client {
 		})
 	}
 
-	pub fn add_playlist(&mut self, playlist: &Playlist) -> Result<String> {
+	pub fn add_playlist(&mut self, playlist: &Playlist) -> Result<PlaylistId> {
 		println!("Adding {:?}", playlist);
+		let id = PlaylistId::new();
+
 		let serialized_playlist = serde_json::to_vec(&playlist)?;
-		self.playlists
-			.insert(playlist.name.to_owned(), serialized_playlist)?;
-		Ok(playlist.name.to_owned())
-	}
-
-	// TODO
-	pub fn set_playlist(&mut self, playlist_id: Uuid) -> Result<()> {
-		Ok(())
-	}
-
-	pub fn delete_playlist(&mut self, name: &str) -> Result<()> {
-		println!("Deleting playlist : {}", name);
-		self.playlists.remove(name)?;
-		Ok(())
-	}
-
-	pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<Playlist>> {
-		self.playlists.iter().map(|kv| {
-			let (_, playlist) = kv?;
-
-			Ok(serde_json::from_slice::<Playlist>(&playlist.as_ref())?)
-		})
-	}
-
-	pub fn add_track(&mut self, track: &Track) -> Result<Uuid> {
-		// Check if track already exists, by title
-		for v in self.iter_tracks() {
-			let t = v?;
-
-			if t.title == track.title {
-				return Ok(t.id.unwrap());
-			}
-		}
-
-		let id = Uuid::new_v4();
-		let atrack = Track {
-			id: Some(id),
-			source: track.source.to_owned(),
-			artists: track.artists.to_owned(),
-			title: track.title.to_owned(),
-			tags: track.tags.to_owned(),
-		};
-		let track = serde_json::to_vec(&atrack)?;
-		self.tracks.insert(id, track)?;
+		self.playlists.insert(id, serialized_playlist)?;
 		Ok(id)
 	}
 
-	pub fn set_track(&mut self, id: Uuid, track: &Track) -> Result<Uuid> {
+	pub fn get_playlist(&self, id: PlaylistId) -> Result<Playlist> {
+		Ok(serde_json::from_slice(
+			self.playlists
+				.get(id)?
+				.ok_or(anyhow!("playlist `{id}` does not exist"))?
+				.as_ref(),
+		)?)
+	}
+
+	// TODO
+	pub fn set_playlist(&mut self, id: PlaylistId) -> Result<()> {
+		Ok(())
+	}
+
+	pub fn delete_playlist(&mut self, id: PlaylistId) -> Result<()> {
+		println!("Deleting playlist : {}", id);
+		self.playlists.remove(id)?;
+		Ok(())
+	}
+
+	pub fn iter_playlists(&mut self) -> impl Iterator<Item = Result<(PlaylistId, Playlist)>> {
+		self.playlists.iter().map(|kv| {
+			let (id, playlist) = kv?;
+
+			Ok((
+				PlaylistId::try_from(id.as_ref())?,
+				serde_json::from_slice::<Playlist>(&playlist.as_ref())?,
+			))
+		})
+	}
+
+	pub fn add_track(&mut self, track: &Track) -> Result<TrackId> {
+		let id = TrackId::new();
 		let track = serde_json::to_vec(&track)?;
 		self.tracks.insert(id, track)?;
 		Ok(id)
 	}
 
-	pub fn delete_track(&mut self, id: Uuid) -> Result<()> {
+	pub fn set_track(&mut self, id: TrackId, track: &Track) -> Result<TrackId> {
+		let track = serde_json::to_vec(&track)?;
+		self.tracks.insert(id, track)?;
+		Ok(id)
+	}
+
+	pub fn delete_track(&mut self, id: TrackId) -> Result<()> {
 		self.tracks.remove(id)?;
 		Ok(())
 	}
 
-	pub fn get_track(&self, id: Uuid) -> Result<Track> {
+	pub fn get_track(&self, id: TrackId) -> Result<Track> {
 		Ok(serde_json::from_slice(
 			self.tracks
 				.get(id)?
@@ -114,25 +114,33 @@ impl Client {
 		)?)
 	}
 
-	pub fn iter_tracks(&mut self) -> impl Iterator<Item = Result<Track>> {
+	pub fn iter_tracks(&mut self) -> impl Iterator<Item = Result<(TrackId, Track)>> {
 		self.tracks.iter().map(|kv| {
-			let (_, track) = kv?;
-			Ok(serde_json::from_slice(track.as_ref())?)
+			let (id, track) = kv?;
+			Ok((
+				TrackId::try_from(id.as_ref())?,
+				serde_json::from_slice(track.as_ref())?,
+			))
 		})
 	}
 
 	// Apply the filter to the list of tracks.
-	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<Track>> {
+	pub fn list_filtered(&mut self, filter: &Filter) -> Result<Vec<(TrackId, Track)>> {
 		Ok(self
 			.iter_tracks()
-			.filter(|track| track.as_ref().map(|t| filter.matches(t)).unwrap_or(true))
+			.filter(|track| {
+				track
+					.as_ref()
+					.map(|(_, t)| filter.matches(t))
+					.unwrap_or(true)
+			})
 			.collect::<Result<_>>()?)
 	}
 
 	pub fn get_tags(&mut self) -> Result<HashSet<String>> {
 		let mut tags = HashSet::default();
 		for t in self.iter_tracks() {
-			for (tag_name, _) in &t?.tags {
+			for (tag_name, _) in &t?.1.tags {
 				tags.insert(tag_name.to_owned());
 			}
 		}
