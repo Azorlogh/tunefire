@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::fmt::Display;
+use std::collections::{HashMap, VecDeque};
+use std::fmt::{Debug, Display};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -18,7 +18,8 @@ use iced::event::listen_raw;
 // use tf_gui::data;
 use iced::widget::{
 	button, center, column, container, horizontal_space, pick_list, row, scrollable, slider, text,
-	text_editor, text_input, toggler, tooltip, vertical_space, Column, Scrollable, Text, Themer,
+	text_editor, text_input, toggler, tooltip, vertical_space, Column, Row, Scrollable, Text,
+	Themer,
 };
 use iced::{keyboard, padding, Center, Element, Fill, Font, Size, Subscription, Task, Theme};
 use parking_lot::RwLock;
@@ -96,9 +97,6 @@ impl std::fmt::Display for SearchSource {
 	}
 }
 
-// History : last played song, allow duplicate
-// Queue : Songs to be played, ordered (can be randomized)
-
 #[derive(Debug)]
 pub enum ViewType {
 	Tracks,
@@ -106,9 +104,14 @@ pub enum ViewType {
 	Playlist(PlaylistId),
 }
 
+// History : last played song, allow duplicate
+// TODO
+// Queue : Songs to be played, ordered (can be randomized)
+// When we request to play a song, add everything from the playlist to the queue
+// When/If randomize is selected, randomize the queue after putting everything on it.
+// If "Keep listening" is selected, when the queue is finished, make one again with the same playlist.
+
 struct Tunefire {
-	current_idx: usize,
-	// current_track: Option<Track>,
 	db: tf_db::Client,
 	player_controller: Controller,
 	player_event: Receiver<Event>,
@@ -118,11 +121,13 @@ struct Tunefire {
 	tag_filter: String,
 	theme: Theme,
 	volume: f32,
-	queue: Vec<TrackId>,
+	queue: VecDeque<TrackId>,
 	track_list: Vec<TrackId>,
 	playlists: Vec<PlaylistId>,
 	current_view: ViewType,
+	current_track_id: Option<TrackId>,
 	add_playlist_name: String,
+	history: Vec<TrackId>, // TODO max size ? https://docs.rs/bounded-vec-deque/0.1.0/bounded_vec_deque/struct.BoundedVecDeque.html
 }
 
 #[derive(Debug, Clone)]
@@ -132,13 +137,13 @@ enum Message {
 	AddPlaylist,
 	DeletePlaylist(PlaylistId),
 	ShowPlaylist(PlaylistId),
-	AddTrackToPlaylist(String, TrackId),
+	AddTrackToPlaylist(TrackId, String),
 	// Tracks
 	ShowTrackList,
 	ImportLocalTracks,
 	DeleteAllTracks,
-	AddTrackToQueue(TrackSource),
-	RequestPlayTrack(Track),
+	AddTrackToControllerQueue(TrackSource),
+	RequestPlayTrack(TrackId),
 	ChangeVolume(f32),
 	PlayPause,
 	Next,
@@ -173,17 +178,17 @@ impl Tunefire {
 		let (player_controller, player_event) = tf_player::player::Player::spawn().unwrap();
 
 		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
-		// #[cfg(feature = "local")]
-		// plugins.push(Box::new(tf_plugin_local::Local));
+		#[cfg(feature = "local")]
+		plugins.push(Box::new(tf_plugin_local::Local));
 		// #[cfg(feature = "soundcloud")]
 		// plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
 		// #[cfg(feature = "youtube")]
 		// plugins.push(Box::new(tf_plugin_youtube::Youtube::new().unwrap()));
 
+		let volume = 10.0;
 		(
 			Self {
 				// current_track: Option::None,
-				current_idx: 0,
 				db,
 				player_controller,
 				player_event,
@@ -195,14 +200,16 @@ impl Tunefire {
 				search_source: SearchSource::All,
 				tag_filter: String::from(""),
 				theme: Theme::Dark,
-				volume: 50.0,
+				volume,
 				track_list,
-				queue: Vec::new(),
+				queue: VecDeque::new(),
 				playlists,
+				current_track_id: Option::None,
 				current_view: ViewType::Tracks,
 				add_playlist_name: String::new(),
+				history: Vec::new(),
 			},
-			Task::none(),
+			Task::done(Message::ChangeVolume(volume)),
 		)
 	}
 
@@ -280,7 +287,7 @@ impl Tunefire {
 			}
 			Message::ShowPlaylist(id) => {
 				println!("Showing playlist view for : {}", id);
-				let playlist = self.db.get_playlist(id).expect("Could not get playlist.");
+				let _ = self.db.get_playlist(id).expect("Could not get playlist.");
 				self.current_view = ViewType::Playlist(id);
 				Task::none()
 			}
@@ -288,8 +295,8 @@ impl Tunefire {
 				self.add_playlist_name = name;
 				Task::none()
 			}
-			Message::AddTrackToPlaylist(name, t) => {
-				println!("{}", name);
+			Message::AddTrackToPlaylist(track_id, playlist_name) => {
+				println!("{}", playlist_name);
 				// println!("Adding track {:?} to playlist {:?}", track_id, playlist_id);
 
 				Task::none()
@@ -324,21 +331,25 @@ impl Tunefire {
 
 				Task::none()
 			}
-			Message::RequestPlayTrack(track) => {
-				let current_track = &self.queue;
-				println!("Current Queue : {:?}", current_track);
-				println!("Requesting : {:?}", track);
-				// match current_track {
-				// 	Some(_) => {
-				// 		self.queue.push(track.clone());
-				// 	}
-				// 	None => current_track = Some(track.clone()),
-				// };
+			Message::RequestPlayTrack(track_id) => {
+				match self.history.len() {
+					0 => self.history.push(track_id),
+					n => {
+						if track_id != self.history[n - 1] {
+							self.history.push(track_id);
+						}
+					}
+				};
 
-				// self.request_track_audio_source(&track)
-				Task::none()
+				match self.queue.len() {
+					0 => self.current_track_id = Some(track_id),
+					_ => {}
+				}
+
+				self.queue.push_front(track_id);
+				self.request_track_audio_source(&track_id)
 			}
-			Message::AddTrackToQueue(source) => {
+			Message::AddTrackToControllerQueue(source) => {
 				self.player_controller.queue_track(source).unwrap();
 
 				Task::none()
@@ -356,32 +367,26 @@ impl Tunefire {
 				Task::none()
 			}
 			Message::Next => {
-				println!("{:?}", self.queue);
-				println!("{:?}", self.current_idx);
-				// match self.queue.pop() {
-				// 	Some(t) => {
-				// 		self.current_track = Some(t.clone());
-				// 		self.player_controller.skip().unwrap();
-				// 		self.player_controller.play().unwrap();
-				// 		return self.request_track_audio_source(&t);
-				// 	}
-				// 	None => {}
-				// }
+				let _ = self.player_controller.skip();
+				self.queue.pop_back();
+				match self.queue.len() {
+					0 => self.current_track_id = Option::None,
+					n => self.current_track_id = Some(self.queue[n - 1]),
+				}
 
 				Task::none()
 			}
 			Message::Previous => {
-				// println!("{:?}", self.history);
-				// match self.history.pop() {
-				// 	Some(t) => {
-				// 		self.queue.push(self.current_track.clone().unwrap());
-				// 		self.current_track = Some(t.clone());
-				// 		self.player_controller.previous().unwrap();
-				// 		self.player_controller.play().unwrap();
-				// 		return self.request_track_audio_source(&t);
+				// TODO, how for controller ?
+				// match self.history.len() {
+				// 	0 => {}
+				// 	n => {
+				// 		let t = self.history[0];
+				// 		self.queue.push_front(t);
+				// 		self.current_track_id = Some(t);
 				// 	}
-				// 	None => {}
 				// }
+				println!("Asking for previous");
 
 				Task::none()
 			}
@@ -437,7 +442,8 @@ impl Tunefire {
 		}
 	}
 
-	fn request_track_audio_source(&self, track: &Track) -> Task<Message> {
+	fn request_track_audio_source(&self, track_id: &TrackId) -> Task<Message> {
+		let track = self.db.get_track(*track_id).expect("Could not get track");
 		let url = Url::parse(&track.source).unwrap();
 		let plugins = self.plugins.clone();
 		Task::perform(
@@ -461,24 +467,27 @@ impl Tunefire {
 			},
 			|res| res,
 		)
-		.and_then(|res| Task::done(Message::AddTrackToQueue(res)))
+		.and_then(|res| Task::done(Message::AddTrackToControllerQueue(res)))
 	}
 
 	fn view(&self) -> Element<Message> {
+		let width = 120.0;
+
 		// playlist list
 		let playlists = container(column(self.playlists.iter().filter_map(|id| {
 			let p = self.db.get_playlist(*id).ok()?;
 			Some(
 				row![
 					button(text(p.name.to_string())).on_press(Message::ShowPlaylist(*id)),
-					button("DELETE").on_press(Message::DeletePlaylist(*id))
+					button("DELETE")
+						.width(width)
+						.on_press(Message::DeletePlaylist(*id))
 				]
 				.into(),
 			)
 		})));
 
 		// sidebar
-		let width = 120.0;
 		let current_view_text = match self.current_view {
 			ViewType::Tracks => text("Tracks"),
 			ViewType::Favorites => text("Favorites"),
@@ -490,6 +499,7 @@ impl Tunefire {
 				text(format!("Playlist : {}", p.name))
 			}
 		};
+
 		let sidebar = column![
 			current_view_text,
 			button("Import")
@@ -518,7 +528,7 @@ impl Tunefire {
 			.on_input(Message::QueryTagChange)
 			.on_submit(Message::QueryTag);
 
-		let track_list = match self.current_view {
+		let track_id_list = match self.current_view {
 			ViewType::Tracks => self.track_list.clone(),
 			ViewType::Favorites => todo!(),
 			ViewType::Playlist(playlist_id) => {
@@ -529,31 +539,36 @@ impl Tunefire {
 			}
 		};
 
-		let track_list_view = container(
-			column(track_list.iter().filter_map(|id| {
+		// let track_list = vec![TrackId::new()];
+
+		let track_list_column = container(
+			column(track_id_list.iter().filter_map(|id| {
 				let t = self.db.get_track(*id).ok()?;
 				Some(
 					row![
-						button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
+						button("PLAY").on_press(Message::RequestPlayTrack(*id)),
 						text(" "),
 						text(t.artists.join(", ")),
 						text(" - "),
 						text(t.title.to_owned()),
 						horizontal_space(),
+						// TODO Error below, try to find why
 						// pick_list(
 						// 	self.playlists
 						// 		.iter()
 						// 		.map(|pid| (self.db.get_playlist(*pid).unwrap().name))
 						// 		.collect::<Vec<String>>(),
 						// 	Option::None::<String>,
-						// 	|pname| { Message::AddTrackToPlaylist(pname, *id) }
+						// 	move |pname| { Message::AddTrackToPlaylist(*id), pname) }
 						// ),
-						button("DELETE").on_press(match self.current_view {
-							ViewType::Tracks => Message::DeleteTrack(*id),
-							ViewType::Favorites => todo!(),
-							ViewType::Playlist(playlist_id) =>
-								Message::RemoveTrackFromPlaylist(playlist_id, id.clone()),
-						}),
+						button("DELETE")
+							.width(width) // TODO does not work
+							.on_press(match self.current_view {
+								ViewType::Tracks => Message::DeleteTrack(*id),
+								ViewType::Favorites => todo!(),
+								ViewType::Playlist(playlist_id) =>
+									Message::RemoveTrackFromPlaylist(playlist_id, id.clone()),
+							}),
 					]
 					.align_y(Center)
 					.into(),
@@ -564,7 +579,7 @@ impl Tunefire {
 		.center_x(Fill)
 		.padding(20.0);
 
-		let track_list = scrollable(track_list_view)
+		let track_list_view = scrollable(track_list_column)
 			.direction(scrollable::Direction::Vertical(
 				scrollable::Scrollbar::new().width(1).scroller_width(10),
 			))
@@ -592,50 +607,100 @@ impl Tunefire {
 			.on_submit(Message::Search);
 
 		// TODO
-		// let media_bar = match &self.current_track {
-		// 	Some(t) => row![
-		// 		row![
-		// 			text("artwork"),
-		// 			column![
-		// 				text(format!("{}", t.title)),
-		// 				text(format!("{}", t.artists.join(", ")))
-		// 			]
-		// 		]
-		// 		.spacing(4.0),
-		// 		horizontal_space(),
-		// 		column![
-		// 			row![
-		// 				button("shuffle"),
-		// 				button("previous").on_press(Message::Previous),
-		// 				button("play_pause").on_press(Message::PlayPause),
-		// 				button("next").on_press(Message::Next),
-		// 				button("replay")
-		// 			]
-		// 			.spacing(4.0),
-		// 			text("track timer bar")
-		// 		],
-		// 		horizontal_space(),
-		// 		column![row![
-		// 			text("volume"),
-		// 			slider(0.0..=100.0, self.volume, Message::ChangeVolume)
-		// 		]
-		// 		.spacing(4.0)],
-		// 	]
-		// 	.align_y(Center),
-		// 	None => row![text("No track.")],
-		// };
+		let media_bar: Row<_> = match &self.current_track_id {
+			Some(tid) => {
+				let t = self.db.get_track(*tid).expect("Could not get track");
+				row![
+					row![
+						text("artwork"),
+						column![
+							text(format!("{}", t.title)),
+							text(format!("{}", t.artists.join(", ")))
+						]
+					]
+					.spacing(4.0),
+					horizontal_space(),
+					column![
+						row![
+							button("shuffle"),
+							button("previous").on_press(Message::Previous),
+							button("play_pause").on_press(Message::PlayPause),
+							button("next").on_press(Message::Next),
+							button("replay")
+						]
+						.spacing(4.0),
+						text("track timer bar")
+					],
+					horizontal_space(),
+					column![row![
+						text("volume"),
+						slider(0.0..=100.0, self.volume, Message::ChangeVolume)
+					]
+					.spacing(4.0)],
+				]
+				.align_y(Center)
+			}
+			None => row![text("No track.")],
+		};
 
-		let history = text("History");
-		let queue = text("Queue");
+		let history_column = container(
+			column(self.history.iter().rev().filter_map(|id| {
+				let t = self.db.get_track(*id).ok()?;
+				Some(
+					row![
+						text(t.artists.join(", ")),
+						text(" - "),
+						text(t.title.to_owned()),
+					]
+					.align_y(Center)
+					.into(),
+				)
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill)
+		.padding(20.0);
+
+		let history_view = scrollable(history_column)
+			.direction(scrollable::Direction::Vertical(
+				scrollable::Scrollbar::new().width(1).scroller_width(10),
+			))
+			.width(Fill)
+			.height(Fill);
+
+		let queue_column = container(
+			column(self.queue.iter().rev().filter_map(|id| {
+				let t = self.db.get_track(*id).ok()?;
+				Some(
+					row![
+						text(t.artists.join(", ")),
+						text(" - "),
+						text(t.title.to_owned()),
+					]
+					.align_y(Center)
+					.into(),
+				)
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill)
+		.padding(20.0);
+
+		let queue_view = scrollable(queue_column)
+			.direction(scrollable::Direction::Vertical(
+				scrollable::Scrollbar::new().width(1).scroller_width(10),
+			))
+			.width(Fill)
+			.height(Fill);
 
 		container(column![
 			row![
 				sidebar,
-				column![tag_filter_bar, track_list],
-				column![history, queue]
+				column![tag_filter_bar, track_list_view],
+				column![history_view, queue_view]
 			],
 			row![source_selector, search_bar],
-			// media_bar,
+			media_bar,
 		])
 		.padding([PADDING, PADDING])
 		.into()

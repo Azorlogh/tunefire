@@ -87,6 +87,7 @@ impl Controller {
 		Ok(())
 	}
 
+	// TODO
 	pub fn previous(&self) -> Result<()> {
 		self.sender.send(Command::Skip).unwrap();
 		Ok(())
