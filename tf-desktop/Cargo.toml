@@ -16,6 +16,8 @@ local = ["tf-plugin-local"]
 tf-db = { path = "../tf-db" }
 tf-player = { path = "../tf-player" }
 # tf-gui = { path = "../tf-gui" }
+serde = "1.0"
+serde_json = "1.0"
 anyhow = "1.0.57"
 parking_lot = "0.12.1"
 url = "2.2.2"

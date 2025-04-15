@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -61,7 +62,7 @@ fn main() -> iced::Result {
 	let db = connect_to_db().expect("Could not connect to db");
 
 	iced::application("Tunefire", Tunefire::update, Tunefire::view)
-		.window_size(Size::new(1080.0, 720.0))
+		.window_size(Size::new(1270.0, 720.0))
 		.subscription(Tunefire::subscription)
 		.theme(Tunefire::theme)
 		.run_with(|| Tunefire::new(db))
@@ -98,6 +99,13 @@ impl std::fmt::Display for SearchSource {
 // History : last played song, allow duplicate
 // Queue : Songs to be played, ordered (can be randomized)
 
+#[derive(Debug)]
+pub enum ViewType {
+	Tracks,
+	Favorites,
+	Playlist(PlaylistId),
+}
+
 struct Tunefire {
 	current_idx: usize,
 	// current_track: Option<Track>,
@@ -113,7 +121,7 @@ struct Tunefire {
 	queue: Vec<TrackId>,
 	track_list: Vec<TrackId>,
 	playlists: Vec<PlaylistId>,
-	current_playlist: Option<PlaylistId>,
+	current_view: ViewType,
 	add_playlist_name: String,
 }
 
@@ -124,11 +132,11 @@ enum Message {
 	AddPlaylist,
 	DeletePlaylist(PlaylistId),
 	ShowPlaylist(PlaylistId),
+	AddTrackToPlaylist(String, TrackId),
 	// Tracks
 	ShowTrackList,
 	ImportLocalTracks,
 	DeleteAllTracks,
-	UpdateTrackList,
 	AddTrackToQueue(TrackSource),
 	RequestPlayTrack(Track),
 	ChangeVolume(f32),
@@ -136,7 +144,7 @@ enum Message {
 	Next,
 	Previous,
 	DeleteTrack(TrackId),
-	RemoveTrackFromCurrentPlaylist(Track),
+	RemoveTrackFromPlaylist(PlaylistId, TrackId),
 	// Tags
 	ShowTags,
 	QueryTag,
@@ -156,14 +164,11 @@ impl Tunefire {
 			.map(|t| t.unwrap().0.to_owned())
 			.collect();
 
-		// let playlists = db
-		// 	.to_owned()
-		// 	.iter_playlists()
-		// 	.map(|p| {
-		// 		let _p = p.unwrap();
-		// 		(_p.name.to_owned(), _p.to_owned())
-		// 	})
-		// 	.collect();
+		let playlists = db
+			.to_owned()
+			.iter_playlists()
+			.map(|p| (p.unwrap().0.to_owned()))
+			.collect();
 
 		let (player_controller, player_event) = tf_player::player::Player::spawn().unwrap();
 
@@ -193,8 +198,8 @@ impl Tunefire {
 				volume: 50.0,
 				track_list,
 				queue: Vec::new(),
-				playlists: Vec::new(),
-				current_playlist: Option::None, // TODO
+				playlists,
+				current_view: ViewType::Tracks,
 				add_playlist_name: String::new(),
 			},
 			Task::none(),
@@ -223,35 +228,70 @@ impl Tunefire {
 		}
 	}
 
+	fn update_playlists(&mut self) {
+		self.playlists = self
+			.db
+			.to_owned()
+			.iter_playlists()
+			.map(|p| (p.unwrap().0.to_owned()))
+			.collect();
+	}
+
+	fn update_tracks(&mut self) {
+		self.track_list = self
+			.db
+			.to_owned()
+			.iter_tracks()
+			.map(|t| t.unwrap().0.to_owned())
+			.collect();
+	}
+
 	fn update(&mut self, message: Message) -> Task<Message> {
 		match message {
-			Message::DeletePlaylist(name) => {
-				// self.playlists.remove(&name);
-				// // TODO see what to do if we delete current viewed playlist, for now set to Tracks
-				// self.current_playlist = String::from_str("Tracks").unwrap();
-				// let _ = self.db.delete_playlist(&name);
+			Message::DeletePlaylist(id) => {
+				let _ = self.db.delete_playlist(id);
+				self.update_playlists();
+
+				match &self.current_view {
+					ViewType::Playlist(pid) => {
+						if pid == &id {
+							self.current_view = ViewType::Tracks;
+						}
+					}
+					_ => {}
+				}
 				Task::none()
 			}
 			Message::AddPlaylist => {
-				// if !self.add_playlist_name.is_empty() {
-				// 	let playlist = Playlist {
-				// 		name: self.add_playlist_name.to_owned(),
-				// 		tracks: Vec::new(),
-				// 	};
-				// 	let _ = self.db.add_playlist(&playlist);
-				// 	self.current_playlist = playlist.name.to_owned();
-				// 	self.playlists.insert(playlist.name.to_owned(), playlist);
-				// }
-				// self.add_playlist_name = String::new();
+				if !self.add_playlist_name.is_empty() {
+					let playlist = Playlist {
+						name: self.add_playlist_name.to_owned(),
+						track_ids: Vec::new(),
+					};
+					let pid = self
+						.db
+						.add_playlist(&playlist)
+						.expect("Could not add playslit to db.");
+					self.update_playlists();
+					self.current_view = ViewType::Playlist(pid);
+				}
+				self.add_playlist_name = String::new();
 				Task::none()
 			}
 			Message::ShowPlaylist(id) => {
 				println!("Showing playlist view for : {}", id);
-				self.current_playlist = Some(id);
+				let playlist = self.db.get_playlist(id).expect("Could not get playlist.");
+				self.current_view = ViewType::Playlist(id);
 				Task::none()
 			}
 			Message::AddPlaylistNameChange(name) => {
 				self.add_playlist_name = name;
+				Task::none()
+			}
+			Message::AddTrackToPlaylist(name, t) => {
+				println!("{}", name);
+				// println!("Adding track {:?} to playlist {:?}", track_id, playlist_id);
+
 				Task::none()
 			}
 			Message::ShowTags => {
@@ -348,46 +388,24 @@ impl Tunefire {
 			Message::DeleteTrack(track_id) => {
 				println!("Deleting : {:?}", track_id);
 				let _ = self.db.delete_track(track_id);
+				self.update_tracks();
 				Task::none()
 			}
-			Message::RemoveTrackFromCurrentPlaylist(track) => {
-				println!("Deleting : {:?} from {:?}", track, self.current_playlist);
+			Message::RemoveTrackFromPlaylist(playlist_id, track_id) => {
+				println!("Deleting : {:?} from {:?}", track_id, playlist_id);
 
-				// TODO
-				// let current_playlist = self
-				// 	.playlists
-				// 	.get_mut(&self.current_playlist)
-				// 	.expect("Could not get current playlist.");
-
-				// if let Some(index) = current_playlist
-				// 	.tracks
-				// 	.iter()
-				// 	.position(|value| *value.source == track.source)
-				// {
-				// 	current_playlist.tracks.swap_remove(index);
-				// 	let _ = self.db.add_playlist(current_playlist);
-				// }
+				let _ = self.db.delete_track_from_playlist(playlist_id, track_id);
+				self.update_playlists();
 
 				Task::none()
 			}
 			Message::ShowTrackList => {
-				// TODO maybe make this playlist name reserved, or already created idk
-				// println!("Showing playlist view for : Tracks");
-				// self.current_playlist = String::from("Tracks");
-
-				Task::none()
-			}
-			Message::UpdateTrackList => {
-				self.track_list = self
-					.db
-					.to_owned()
-					.iter_tracks()
-					.map(|t| t.unwrap().0.to_owned())
-					.collect();
+				self.current_view = ViewType::Tracks;
 
 				Task::none()
 			}
 			Message::DeleteAllTracks => {
+				// DEBUG
 				// for (kv) in self.db.to_owned().iter_tracks() {
 				// 	let (id, t) = kv.unwrap();
 				// 	self.db.delete_track(id);
@@ -395,38 +413,26 @@ impl Tunefire {
 				Task::none()
 			}
 			Message::ImportLocalTracks => {
-				// TODO Some optimization : Always add track to global list
-				// If adding to a playlist, check if not already exists in global track
 				let tracks = self.get_local_tracks().unwrap();
+				let mut track_ids = Vec::new();
 				for t in tracks.iter() {
-					let _ = self.db.to_owned().add_track(t);
+					let tid = self.db.to_owned().add_track(t);
+					track_ids.push(tid.unwrap());
 				}
-				Task::done(Message::UpdateTrackList)
-				// TODO implement for different view
-				// match self.current_playlist.as_str() {
-				// 	"Tracks" => {
-				// 		for t in tracks.iter() {
-				// 			let _ = self.db.to_owned().add_track(t);
-				// 		}
-				// 		Task::done(Message::UpdateTrackList)
-				// 	}
-				// 	_ => {
-				// 		let current_playlist = self
-				// 			.playlists
-				// 			.get_mut(&self.current_playlist)
-				// 			.expect("Could not get current playlist.");
+				self.update_tracks();
 
-				// 		for t in tracks.iter() {
-				// 			let _ = current_playlist.tracks.push(t.to_owned());
-				// 			// Also add them to global track
-				// 			let _ = self.db.to_owned().add_track(t);
-				// 		}
+				match &self.current_view {
+					ViewType::Tracks => {}
+					ViewType::Favorites => todo!(),
+					ViewType::Playlist(playlist_id) => {
+						for tid in track_ids.iter() {
+							let _ = self.db.to_owned().add_track_to_playlist(*playlist_id, *tid);
+						}
+						self.update_playlists();
+					}
+				}
 
-				// 		// Update db
-				// 		let _ = self.db.add_playlist(current_playlist);
-				// 		Task::none()
-				// 	}
-				// }
+				Task::none()
 			}
 		}
 	}
@@ -473,7 +479,19 @@ impl Tunefire {
 
 		// sidebar
 		let width = 120.0;
+		let current_view_text = match self.current_view {
+			ViewType::Tracks => text("Tracks"),
+			ViewType::Favorites => text("Favorites"),
+			ViewType::Playlist(playlist_id) => {
+				let p = self
+					.db
+					.get_playlist(playlist_id)
+					.expect("Could not get playslist to show name");
+				text(format!("Playlist : {}", p.name))
+			}
+		};
 		let sidebar = column![
+			current_view_text,
 			button("Import")
 				.width(width)
 				.on_press(Message::ImportLocalTracks),
@@ -500,58 +518,19 @@ impl Tunefire {
 			.on_input(Message::QueryTagChange)
 			.on_submit(Message::QueryTag);
 
-		// track list
-		// let track_list = match self.current_playlist.as_str() {
-		// 	"Tracks" => container(
-		// 		column(self.track_list.iter().filter_map(|id| {
-		// 			let t = self.db.get_track(*id).ok()?;
-		// 			Some(
-		// 				row![
-		// 					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
-		// 					text(" "),
-		// 					text(t.artists.join(", ")),
-		// 					text(" - "),
-		// 					text(t.title.to_owned()),
-		// 					horizontal_space(),
-		// 					button("DELETE from DB").on_press(Message::DeleteTrack(*id)),
-		// 				]
-		// 				.align_y(Center)
-		// 				.into(),
-		// 			)
-		// 		}))
-		// 		.spacing(20.0),
-		// 	)
-		// 	.center_x(Fill)
-		// 	.padding(20.0),
-		// 	_ => {
-		// 		let pname = &self.current_playlist;
-		// 		let playlist = self
-		// 			.playlists
-		// 			.get(pname)
-		// 			.expect(&format!("Could not get playlist : {}", pname));
-		// 		container(
-		// 			column(playlist.tracks.iter().map(|t| {
-		// 				row![
-		// 					button("PLAY").on_press(Message::RequestPlayTrack(t.to_owned())),
-		// 					text(" "),
-		// 					text(t.artists.join(", ")),
-		// 					text(" - "),
-		// 					text(t.title.to_owned()),
-		// 					horizontal_space(),
-		// 					button("DELETE from Playlist")
-		// 						.on_press(Message::RemoveTrackFromCurrentPlaylist(t.to_owned())),
-		// 				]
-		// 				.align_y(Center)
-		// 				.into()
-		// 			}))
-		// 			.spacing(20.0),
-		// 		)
-		// 		.center_x(Fill)
-		// 		.padding(20.0)
-		// 	}
-		// };
-		let track_list = container(
-			column(self.track_list.iter().filter_map(|id| {
+		let track_list = match self.current_view {
+			ViewType::Tracks => self.track_list.clone(),
+			ViewType::Favorites => todo!(),
+			ViewType::Playlist(playlist_id) => {
+				self.db
+					.get_playlist(playlist_id)
+					.expect("Could not get playlist")
+					.track_ids
+			}
+		};
+
+		let track_list_view = container(
+			column(track_list.iter().filter_map(|id| {
 				let t = self.db.get_track(*id).ok()?;
 				Some(
 					row![
@@ -561,7 +540,20 @@ impl Tunefire {
 						text(" - "),
 						text(t.title.to_owned()),
 						horizontal_space(),
-						button("DELETE from DB").on_press(Message::DeleteTrack(*id)),
+						// pick_list(
+						// 	self.playlists
+						// 		.iter()
+						// 		.map(|pid| (self.db.get_playlist(*pid).unwrap().name))
+						// 		.collect::<Vec<String>>(),
+						// 	Option::None::<String>,
+						// 	|pname| { Message::AddTrackToPlaylist(pname, *id) }
+						// ),
+						button("DELETE").on_press(match self.current_view {
+							ViewType::Tracks => Message::DeleteTrack(*id),
+							ViewType::Favorites => todo!(),
+							ViewType::Playlist(playlist_id) =>
+								Message::RemoveTrackFromPlaylist(playlist_id, id.clone()),
+						}),
 					]
 					.align_y(Center)
 					.into(),
@@ -572,7 +564,7 @@ impl Tunefire {
 		.center_x(Fill)
 		.padding(20.0);
 
-		let track_list = scrollable(track_list)
+		let track_list = scrollable(track_list_view)
 			.direction(scrollable::Direction::Vertical(
 				scrollable::Scrollbar::new().width(1).scroller_width(10),
 			))

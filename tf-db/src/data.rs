@@ -25,5 +25,5 @@ define_id!(PlaylistId);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Playlist {
 	pub name: String,
-	pub track_ids: Vec<Uuid>,
+	pub track_ids: Vec<TrackId>,
 }

@@ -5952,6 +5952,8 @@ dependencies = [
  "parking_lot 0.12.3",
  "rand 0.8.5",
  "rfd",
+ "serde",
+ "serde_json",
  "souvlaki",
  "tf-db",
  "tf-player",

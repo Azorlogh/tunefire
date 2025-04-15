@@ -49,11 +49,57 @@ impl Client {
 
 	pub fn add_playlist(&mut self, playlist: &Playlist) -> Result<PlaylistId> {
 		println!("Adding {:?}", playlist);
+		// Check if track already exists, by title
+
+		for kv in self.iter_playlists() {
+			let (id, p) = kv?;
+			if p.name == playlist.name {
+				println!("Playlist already exists !");
+				return Ok(id);
+			}
+		}
+
 		let id = PlaylistId::new();
 
 		let serialized_playlist = serde_json::to_vec(&playlist)?;
 		self.playlists.insert(id, serialized_playlist)?;
 		Ok(id)
+	}
+
+	pub fn set_playlist(&mut self, id: PlaylistId, playlist: &Playlist) -> Result<PlaylistId> {
+		let p = serde_json::to_vec(&playlist)?;
+		self.playlists.insert(id, p)?;
+		Ok(id)
+	}
+
+	pub fn add_track_to_playlist(
+		&mut self,
+		playlist_id: PlaylistId,
+		track_id: TrackId,
+	) -> Result<()> {
+		let mut playlist = self.get_playlist(playlist_id)?;
+
+		playlist.track_ids.push(track_id);
+
+		self.set_playlist(playlist_id, &playlist)?;
+
+		Ok(())
+	}
+
+	pub fn delete_track_from_playlist(
+		&mut self,
+		playlist_id: PlaylistId,
+		track_id: TrackId,
+	) -> Result<()> {
+		let mut playlist = self.get_playlist(playlist_id)?;
+
+		if let Some(index) = playlist.track_ids.iter().position(|id| *id == track_id) {
+			playlist.track_ids.swap_remove(index);
+		}
+
+		self.set_playlist(playlist_id, &playlist)?;
+
+		Ok(())
 	}
 
 	pub fn get_playlist(&self, id: PlaylistId) -> Result<Playlist> {
@@ -63,11 +109,6 @@ impl Client {
 				.ok_or(anyhow!("playlist `{id}` does not exist"))?
 				.as_ref(),
 		)?)
-	}
-
-	// TODO
-	pub fn set_playlist(&mut self, id: PlaylistId) -> Result<()> {
-		Ok(())
 	}
 
 	pub fn delete_playlist(&mut self, id: PlaylistId) -> Result<()> {
