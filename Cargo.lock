@@ -5959,6 +5959,7 @@ dependencies = [
  "tf-player",
  "tf-plugin",
  "tf-plugin-local",
+ "tf-plugin-soundcloud",
  "tracing",
  "tracing-subscriber",
  "url",

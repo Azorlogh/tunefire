@@ -9,7 +9,7 @@ license = "MIT"
 [features]
 default = ["local"]
 local = ["tf-plugin-local"]
-# soundcloud = ["tf-plugin-soundcloud"]
+soundcloud = ["tf-plugin-soundcloud"]
 # youtube = ["tf-plugin-youtube"]
 
 [dependencies]
@@ -35,5 +35,5 @@ rfd = "0.15.3"
 
 tf-plugin = { path = "../tf-plugin" }
 tf-plugin-local = { path = "../plugins/tf-plugin-local", optional = true }
-# tf-plugin-soundcloud = { path = "../plugins/tf-plugin-soundcloud", optional = true }
+tf-plugin-soundcloud = { path = "../plugins/tf-plugin-soundcloud", optional = true }
 # tf-plugin-youtube = { path = "../plugins/tf-plugin-youtube", optional = true }

@@ -81,7 +81,6 @@ fn connect_to_db() -> Result<tf_db::Client> {
 enum SearchSource {
 	#[default]
 	All,
-	Local,
 	Soundcloud,
 	Youtube,
 }
@@ -90,7 +89,6 @@ impl std::fmt::Display for SearchSource {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.write_str(match self {
 			SearchSource::All => "All",
-			SearchSource::Local => "Local",
 			SearchSource::Soundcloud => "SoundCloud",
 			SearchSource::Youtube => "YouTube",
 		})
@@ -102,6 +100,7 @@ pub enum ViewType {
 	Tracks,
 	Favorites,
 	Playlist(PlaylistId),
+	Search,
 }
 
 // History : last played song, allow duplicate
@@ -139,6 +138,7 @@ enum Message {
 	ShowPlaylist(PlaylistId),
 	AddTrackToPlaylist(TrackId, String),
 	// Tracks
+	AddTrackToTracks(Track),
 	ShowTrackList,
 	ImportLocalTracks,
 	DeleteAllTracks,
@@ -180,8 +180,8 @@ impl Tunefire {
 		let mut plugins: Vec<Box<dyn Plugin>> = vec![];
 		#[cfg(feature = "local")]
 		plugins.push(Box::new(tf_plugin_local::Local));
-		// #[cfg(feature = "soundcloud")]
-		// plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
+		#[cfg(feature = "soundcloud")]
+		plugins.push(Box::new(tf_plugin_soundcloud::Soundcloud::new().unwrap()));
 		// #[cfg(feature = "youtube")]
 		// plugins.push(Box::new(tf_plugin_youtube::Youtube::new().unwrap()));
 
@@ -317,6 +317,7 @@ impl Tunefire {
 				Task::none()
 			}
 			Message::Search => {
+				self.current_view = ViewType::Search;
 				self.search_track_from_source();
 
 				Task::none()
@@ -435,7 +436,13 @@ impl Tunefire {
 						}
 						self.update_playlists();
 					}
+					_ => {}
 				}
+
+				Task::none()
+			}
+			Message::AddTrackToTracks(track) => {
+				let _ = self.db.to_owned().add_track(&track);
 
 				Task::none()
 			}
@@ -498,6 +505,7 @@ impl Tunefire {
 					.expect("Could not get playslist to show name");
 				text(format!("Playlist : {}", p.name))
 			}
+			ViewType::Search => text("Search results"),
 		};
 
 		let sidebar = column![
@@ -528,72 +536,19 @@ impl Tunefire {
 			.on_input(Message::QueryTagChange)
 			.on_submit(Message::QueryTag);
 
-		let track_id_list = match self.current_view {
-			ViewType::Tracks => self.track_list.clone(),
+		let track_list_view = match self.current_view {
+			ViewType::Tracks => self.create_track_list_tracks(),
 			ViewType::Favorites => todo!(),
-			ViewType::Playlist(playlist_id) => {
-				self.db
-					.get_playlist(playlist_id)
-					.expect("Could not get playlist")
-					.track_ids
-			}
+			ViewType::Playlist(playlist_id) => self.create_track_list_playlist(playlist_id),
+			ViewType::Search => self.create_track_list_search(),
 		};
 
-		// let track_list = vec![TrackId::new()];
-
-		let track_list_column = container(
-			column(track_id_list.iter().filter_map(|id| {
-				let t = self.db.get_track(*id).ok()?;
-				Some(
-					row![
-						button("PLAY").on_press(Message::RequestPlayTrack(*id)),
-						text(" "),
-						text(t.artists.join(", ")),
-						text(" - "),
-						text(t.title.to_owned()),
-						horizontal_space(),
-						// TODO Error below, try to find why
-						// pick_list(
-						// 	self.playlists
-						// 		.iter()
-						// 		.map(|pid| (self.db.get_playlist(*pid).unwrap().name))
-						// 		.collect::<Vec<String>>(),
-						// 	Option::None::<String>,
-						// 	move |pname| { Message::AddTrackToPlaylist(*id), pname) }
-						// ),
-						button("DELETE")
-							.width(width) // TODO does not work
-							.on_press(match self.current_view {
-								ViewType::Tracks => Message::DeleteTrack(*id),
-								ViewType::Favorites => todo!(),
-								ViewType::Playlist(playlist_id) =>
-									Message::RemoveTrackFromPlaylist(playlist_id, id.clone()),
-							}),
-					]
-					.align_y(Center)
-					.into(),
-				)
-			}))
-			.spacing(20.0),
-		)
-		.center_x(Fill)
-		.padding(20.0);
-
-		let track_list_view = scrollable(track_list_column)
-			.direction(scrollable::Direction::Vertical(
-				scrollable::Scrollbar::new().width(1).scroller_width(10),
-			))
-			.width(Fill)
-			.height(Fill);
-
 		// source_selector
-		// TODO
 		let source_selector = pick_list(
 			[
-				SearchSource::Local,
+				SearchSource::All,
 				SearchSource::Soundcloud,
 				SearchSource::Youtube,
-				SearchSource::All,
 			],
 			Some(self.search_source),
 			|source| Message::SourceChange(source),
@@ -606,7 +561,6 @@ impl Tunefire {
 			.on_input(Message::SearchChange)
 			.on_submit(Message::Search);
 
-		// TODO
 		let media_bar: Row<_> = match &self.current_track_id {
 			Some(tid) => {
 				let t = self.db.get_track(*tid).expect("Could not get track");
@@ -720,9 +674,9 @@ impl Tunefire {
 		self.theme.clone()
 	}
 
-	fn search_track_from_source(&self) {
+	fn search_track_from_source(&self) -> Task<Message> {
 		println!(
-			"Search '{:?}' from source '{}'",
+			"Search {:?} from source '{}'",
 			self.search_query,
 			self.search_source.to_string()
 		);
@@ -730,10 +684,30 @@ impl Tunefire {
 		// TODO
 		// match self.search_source {
 		// 	SearchSource::All => todo!(),
-		// 	SearchSource::Local => todo!(),
-		// 	SearchSource::Soundcloud => todo!(),
+		// 	SearchSource::Soundcloud => self.plugins,
 		// 	SearchSource::Youtube => todo!(),
 		// }
+
+		let plugins = self.plugins.clone();
+		todo!()
+		// Task::perform(async move {
+		// 	if let Some(result) = plugins
+		// 		.iter()
+		// 		.filter_map(|p| p.read().get_source_plugin())
+		// 		.find_map(|p| p.handle_url(&url))
+		// 	{
+		// 		match result {
+		// 			Ok(source) => Some(source),
+		// 			Err(e) => {
+		// 				warn!("error while handling track {url:?}: {e}");
+		// 				Option::None
+		// 			}
+		// 		}
+		// 	} else {
+		// 		warn!("no plugin could handle the track: {url:?}");
+		// 		Option::None
+		// 	}
+		// })
 	}
 
 	fn filter_tracks_by_tag_expression(&self) {
@@ -741,5 +715,131 @@ impl Tunefire {
 			"Filter tracks with expression '{}'",
 			self.tag_filter.to_string()
 		)
+	}
+	fn create_track_list_tracks(&self) -> Scrollable<'_, Message> {
+		let track_id_list = self.track_list.clone();
+
+		let track_list_column = container(
+			column(track_id_list.iter().filter_map(|id| {
+				let t = self.db.get_track(*id).ok()?;
+				Some(
+					row![
+						button("PLAY").on_press(Message::RequestPlayTrack(*id)),
+						text(" "),
+						text(t.artists.join(", ")),
+						text(" - "),
+						text(t.title.to_owned()),
+						horizontal_space(),
+						// TODO Error below, try to find why
+						// pick_list(
+						// 	self.playlists
+						// 		.iter()
+						// 		.map(|pid| (self.db.get_playlist(*pid).unwrap().name))
+						// 		.collect::<Vec<String>>(),
+						// 	Option::None::<String>,
+						// 	move |pname| { Message::AddTrackToPlaylist(*id), pname) }
+						// ),
+						button("DELETE").on_press(Message::DeleteTrack(*id)),
+					]
+					.align_y(Center)
+					.into(),
+				)
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill)
+		.padding(20.0);
+
+		let track_list_view = scrollable(track_list_column)
+			.direction(scrollable::Direction::Vertical(
+				scrollable::Scrollbar::new().width(1).scroller_width(10),
+			))
+			.width(Fill)
+			.height(Fill);
+
+		track_list_view
+	}
+
+	fn create_track_list_favorites(&self) -> Vec<TrackId> {
+		todo!()
+	}
+
+	fn create_track_list_playlist(&self, playlist_id: PlaylistId) -> Scrollable<'_, Message> {
+		let track_id_list = self
+			.db
+			.get_playlist(playlist_id)
+			.expect("Could not get playlist")
+			.track_ids;
+
+		let track_list_column = container(
+			column(track_id_list.iter().filter_map(|id| {
+				let t = self.db.get_track(*id).ok()?;
+				Some(
+					row![
+						button("PLAY").on_press(Message::RequestPlayTrack(*id)),
+						text(" "),
+						text(t.artists.join(", ")),
+						text(" - "),
+						text(t.title.to_owned()),
+						horizontal_space(),
+						// TODO Error below, try to find why
+						// pick_list(
+						// 	self.playlists
+						// 		.iter()
+						// 		.map(|pid| (self.db.get_playlist(*pid).unwrap().name))
+						// 		.collect::<Vec<String>>(),
+						// 	Option::None::<String>,
+						// 	move |pname| { Message::AddTrackToPlaylist(*id), pname) }
+						// ),
+						button("DELETE")
+							.on_press(Message::RemoveTrackFromPlaylist(playlist_id, *id)),
+					]
+					.align_y(Center)
+					.into(),
+				)
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill)
+		.padding(20.0);
+
+		let track_list_view = scrollable(track_list_column)
+			.direction(scrollable::Direction::Vertical(
+				scrollable::Scrollbar::new().width(1).scroller_width(10),
+			))
+			.width(Fill)
+			.height(Fill);
+
+		track_list_view
+	}
+
+	fn create_track_list_search(&self) -> Scrollable<'_, Message> {
+		let track_list: Vec<Track> = Vec::new();
+
+		let track_list_column = container(
+			column(track_list.iter().filter_map(|track| {
+				Some(
+					row![
+						text("Title"),
+						horizontal_space(),
+						button("Add").on_press(Message::AddTrackToTracks(track.clone())),
+					]
+					.align_y(Center)
+					.into(),
+				)
+			}))
+			.spacing(20.0),
+		)
+		.center_x(Fill)
+		.padding(20.0);
+
+		let track_list_view = scrollable(track_list_column)
+			.direction(scrollable::Direction::Vertical(
+				scrollable::Scrollbar::new().width(1).scroller_width(10),
+			))
+			.width(Fill)
+			.height(Fill);
+
+		track_list_view
 	}
 }
